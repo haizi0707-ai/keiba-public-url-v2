@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>競馬予想アプリ 公開URL版 v2</title>
+<style>
+:root{--bg1:#0d1016;--bg2:#141925;--card:#171a21;--line:#2a2f3a;--text:#f5f7fb;--sub:#aeb7c7;--blue:#2f6fed;--green:#1a9c6b;--orange:#be7a12;--gray:#1f2735;--red:#a63f3f;--gold:#d8b65c}
+*{box-sizing:border-box}
+body{margin:0;padding:16px;color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic","Segoe UI",sans-serif;background:linear-gradient(180deg,var(--bg1),var(--bg2))}
+.wrap{max-width:1240px;margin:0 auto} h1{font-size:28px;margin:0 0 6px}.sub{font-size:13px;color:var(--sub);line-height:1.7;margin-bottom:14px}
+.card{background:rgba(23,26,33,.96);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:14px;box-shadow:0 10px 28px rgba(0,0,0,.22);overflow:hidden}
+.grid{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:900px){.g2{grid-template-columns:repeat(2,minmax(0,1fr))}.g4{grid-template-columns:repeat(4,minmax(0,1fr))}}
+label{display:block;font-size:13px;color:var(--sub);margin-bottom:6px;font-weight:700}
+input,select,textarea{width:100%;display:block;border-radius:12px;border:1px solid #343b49;background:#0f131b;color:var(--text);padding:12px 13px;font-size:16px;outline:none}
+textarea{min-height:120px;resize:vertical;line-height:1.65}.small{min-height:88px}.mid{min-height:150px}.big{min-height:260px}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+button{appearance:none;border:none;border-radius:12px;padding:12px 14px;font-size:15px;font-weight:800;color:#fff;background:var(--blue);box-shadow:0 6px 16px rgba(47,111,237,.28);cursor:pointer}
+button.secondary{background:var(--gray);box-shadow:none;border:1px solid #364055}button.green{background:var(--green)}button.orange{background:var(--orange)}button.red{background:var(--red)}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}.tab{width:auto;background:#1b2331;border:1px solid #33425f;color:#d8e4ff}.tab.active{outline:2px solid #5f98ff;background:var(--blue)}
+.view{display:none}.view.active{display:block}.kicker{font-size:12px;color:#d9e6ff;margin-bottom:8px}
+.notice{background:#111722;border:1px solid #313847;padding:10px 12px;border-radius:12px;color:#d7e5ff;font-size:13px;line-height:1.6}
+.statgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}@media (min-width:900px){.statgrid{grid-template-columns:repeat(4,1fr)}}
+.stat{border:1px solid #313847;border-radius:14px;padding:12px;background:#121722}.statbig{font-size:22px;font-weight:800}
+.tablewrap{overflow:auto} table{width:100%;border-collapse:collapse;min-width:860px;background:#111722}
+th,td{padding:10px 8px;border-bottom:1px solid #2a3140;text-align:left;font-size:14px;vertical-align:top} th{background:#151b27;color:#d8e4ff}
+.list-item{border:1px solid #313847;border-radius:12px;padding:12px;margin-bottom:10px;background:#121722}.list-title{font-weight:800;margin-bottom:6px}
+.result{white-space:pre-wrap;line-height:1.75;font-size:14px}.empty{color:#8e98aa}.gold{color:var(--gold)}.footer{color:#8e98aa;font-size:12px;line-height:1.7;padding:4px 2px 20px}
+a.inline{color:#9ec5ff}.code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#10151f;padding:2px 6px;border-radius:6px;border:1px solid #2b3547}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>競馬予想アプリ 公開URL版 v2</h1>
+<div class="sub">推奨馬ロジック固定版。判定キーは <span class="code">競馬場 × 距離 × 芝ダ × 分類 × 信頼度</span>。複勝率90%以上、母数10以上で推奨馬を表示します。</div>
+
+<div class="card"><div class="notice">静的HTML版です。予想生成はChatGPT、保存・集計・推奨馬表示はアプリ側で行います。保存はブラウザ内です。</div></div>
+
+<div class="card">
+<div class="kicker">共通入力</div>
+<div class="grid g4">
+<div><label>レース日</label><input id="raceDate" type="date" /></div>
+<div><label>競馬場</label><select id="racecourse"></select></div>
+<div><label>レース</label><select id="raceNo"></select></div>
+<div><label>クラス / レース名</label><input id="raceClass" placeholder="例：3勝クラス / G2 / オープン" /></div>
+</div>
+<div class="grid g4" style="margin-top:12px">
+<div><label>馬場種別</label><select id="surface"><option value="">選択</option><option>芝</option><option>ダート</option><option>障害</option></select></div>
+<div><label>距離</label><input id="distance" type="number" placeholder="例：1600" /></div>
+<div><label>頭数</label><input id="horseCount" type="number" placeholder="例：16" /></div>
+<div><label>レース種別タグ</label><select id="raceType"><option value="">選択</option><option>新馬・未勝利以外</option><option>1勝クラス</option><option>2勝クラス</option><option>3勝クラス</option><option>オープン</option><option>重賞</option></select></div>
+</div>
+<div class="row" style="margin-top:12px">
+<button id="fillAuto" class="secondary">情報を整理</button>
+<button id="buildLinks" class="secondary">検索リンク</button>
+<button id="saveAll" class="secondary">保存</button>
+<button id="toPre" class="green">前日版</button>
+<button id="toDay" class="orange">当日版</button>
+<button id="toHorses" class="secondary">馬一覧</button>
+<button id="toRecoHorse" class="secondary">推奨馬</button>
+</div>
+</div>
+
+<div class="tabs">
+<button id="tabHome" class="tab active">ホーム</button>
+<button id="tabPre" class="tab">前日版</button>
+<button id="tabDay" class="tab">当日版</button>
+<button id="tabHorses" class="tab">馬一覧</button>
+<button id="tabRecoHorse" class="tab">推奨馬</button>
+<button id="tabList" class="tab">保存一覧</button>
+<button id="tabStats" class="tab">信頼度集計</button>
+<button id="tabReco" class="tab">条件集計</button>
+</div>
+
+<div id="viewHome" class="view active">
+<div class="statgrid">
+<div class="stat"><div class="kicker">保存レース数</div><div id="homeSaved" class="statbig">0</div></div>
+<div class="stat"><div class="kicker">記録済み馬数</div><div id="homeHorseCount" class="statbig">0</div></div>
+<div class="stat"><div class="kicker">A以上 複勝率</div><div id="homeAPlace" class="statbig">-</div></div>
+<div class="stat"><div class="kicker">今回の推奨馬数</div><div id="homeRecoHorseCount" class="statbig">0</div></div>
+</div>
+<div class="card" style="margin-top:12px"><div class="kicker">検索リンク</div><div id="searchLinks" class="result empty">まだ作成されていません。</div></div>
+</div>
+
+<div id="viewPre" class="view">
+<div class="card">
+<div class="grid g2">
+<div><label>自動整理メモ</label><textarea id="autoMemo" class="mid"></textarea></div>
+<div><label>公開情報メモ</label><textarea id="publicInfoPre" class="mid"></textarea></div>
+</div>
+<div style="margin-top:12px"><label>追記メモ</label><textarea id="userMemoPre" class="small"></textarea></div>
+</div>
+<div class="card"><div class="row" style="justify-content:space-between;align-items:center"><div class="kicker" style="margin:0">ChatGPT用テキスト</div><button id="copyPrePrompt" class="green">前日版テキストをコピー</button></div><textarea id="prePrompt" class="big"></textarea></div>
+<div class="card"><label>前日版結果</label><textarea id="preResult" class="big"></textarea><div class="row" style="margin-top:12px"><button id="savePre" class="green">前日版を保存</button></div></div>
+</div>
+
+<div id="viewDay" class="view">
+<div class="card"><label>保存済み前日版</label><textarea id="savedPrePreview" class="mid" readonly></textarea></div>
+<div class="card">
+<div class="grid g2">
+<div><label>当日公開情報メモ</label><textarea id="publicInfoDay" class="mid"></textarea></div>
+<div><label>当日追記メモ</label><textarea id="userMemoDay" class="mid"></textarea></div>
+</div>
+</div>
+<div class="card"><div class="row" style="justify-content:space-between;align-items:center"><div class="kicker" style="margin:0">ChatGPT用テキスト</div><button id="copyDayPrompt" class="orange">当日版テキストをコピー</button></div><textarea id="dayPrompt" class="big"></textarea></div>
+<div class="card"><label>当日版結果</label><textarea id="dayResult" class="big"></textarea><div class="row" style="margin-top:12px"><button id="saveDay" class="orange">当日版を保存</button></div></div>
+</div>
+
+<div id="viewHorses" class="view">
+<div class="card">
+<div class="kicker">今回の馬を登録</div>
+<div class="grid g4">
+<div><label>馬名</label><input id="horseNameInput" /></div>
+<div><label>分類</label><select id="horseCategoryInput"><option value="">選択</option><option>本命候補</option><option>相手本線</option><option>強穴</option><option>軽視候補</option></select></div>
+<div><label>信頼度</label><select id="horseTrustInput"><option value="">選択</option><option>S</option><option>A</option><option>B</option><option>C</option><option>D</option></select></div>
+<div><label>着順</label><input id="horseFinishInput" type="number" /></div>
+</div>
+<div class="row" style="margin-top:12px">
+<button id="addHorse" class="green">馬を追加</button>
+<button id="clearHorseForm" class="secondary">入力クリア</button>
+<button id="saveHorseList" class="secondary">馬一覧保存</button>
+</div>
+</div>
+<div class="card"><div class="kicker">登録済み馬一覧</div><div class="tablewrap"><table><thead><tr><th>馬名</th><th>分類</th><th>信頼度</th><th>着順</th><th>操作</th></tr></thead><tbody id="horseTable"></tbody></table></div></div>
+</div>
+
+<div id="viewRecoHorse" class="view">
+<div class="card">
+<div class="kicker">今回の推奨馬</div>
+<div class="result">判定キー
+競馬場 × 距離 × 芝ダ × 分類 × 信頼度
+
+表示条件
+複勝率 90%以上
+母数 10以上</div>
+<div style="margin-top:12px" id="recommendHorseBox" class="empty">まず今回の馬を登録してください。</div>
+</div>
+</div>
+
+<div id="viewList" class="view"><div class="card"><div id="recordList" class="empty">まだ保存されていません。</div></div></div>
+<div id="viewStats" class="view"><div class="card"><div class="tablewrap"><table><thead><tr><th>信頼度</th><th>延べ頭数</th><th>1着数</th><th>3着内数</th><th>単勝率</th><th>複勝率</th></tr></thead><tbody id="trustTable"></tbody></table></div></div></div>
+<div id="viewReco" class="view"><div class="card"><div class="result">条件キー = 競馬場 × 距離 × 芝ダ × 分類 × 信頼度</div><div class="tablewrap" style="margin-top:12px"><table><thead><tr><th>条件</th><th>延べ頭数</th><th>1着数</th><th>3着内数</th><th>単勝率</th><th>複勝率</th></tr></thead><tbody id="recoTable"></tbody></table></div></div></div>
+
+<div class="footer">次の段階で、中央競馬6〜12Rの過去3年データを入れるCSVインポート機能を追加できます。</div>
+</div>
+
+<script>
+const STORAGE_KEY="keiba_public_url_v2_records";
+const TRUSTS=["S","A","B","C","D"];
+const COURSES=["札幌競馬場","函館競馬場","福島競馬場","新潟競馬場","東京競馬場","中山競馬場","中京競馬場","京都競馬場","阪神競馬場","小倉競馬場"];
+const RACES=Array.from({length:12},(_,i)=>`${i+1}R`);
+const $=id=>document.getElementById(id);
+function todayStr(){const d=new Date();const z=d.getTimezoneOffset()*60000;return new Date(d-z).toISOString().slice(0,10);}
+function initSelects(){$("raceDate").value=todayStr();$("racecourse").innerHTML='<option value="">競馬場を選択</option>'+COURSES.map(v=>`<option>${v}</option>`).join('');$("raceNo").innerHTML='<option value="">レースを選択</option>'+RACES.map(v=>`<option>${v}</option>`).join('');}
+function setTab(name){["Home","Pre","Day","Horses","RecoHorse","List","Stats","Reco"].forEach(n=>{$("tab"+n).classList.toggle("active",n===name);$("view"+n).classList.toggle("active",n===name);});}
+function keyOfRace(){return `${$("raceDate").value}__${$("racecourse").value}__${$("raceNo").value}`;}
+function allRecords(){return JSON.parse(localStorage.getItem(STORAGE_KEY)||"{}");}
+function saveRecords(v){localStorage.setItem(STORAGE_KEY,JSON.stringify(v));}
+function pct(a,b){if(!b)return "-";return (a/b*100).toFixed(1)+"%";}
+function buildAutoMemo(){return ["【確認したい情報】","・出馬表","・馬番 / 馬名 / 騎手 / 枠順","・コース形態 / 距離","・近2走内容","・前走、前々走の着順 / 着差 / 通過順","・脚質傾向","・ラップ傾向","・馬場想定","・ペース想定","・当日までに分かる範囲のコース傾向","","【評価方針】","・縦軸＝能力再現性","・横軸＝展開適性","・近2走重視","・直線ロジック重視","・軸候補は1頭","・分類は 本命候補 / 相手本線 / 強穴 / 軽視候補","・最終表示は 馬名｜信頼度"].join("\n");}
+function buildLinks(){const date=$("raceDate").value||"";const course=$("racecourse").value||"";const race=$("raceNo").value||"";const links=[["Google 出馬表",`https://www.google.com/search?q=${encodeURIComponent(`${date} ${course} ${race} 出馬表`)}`],["Google 予想",`https://www.google.com/search?q=${encodeURIComponent(`${date} ${course} ${race} 予想`)}`],["Google 馬場",`https://www.google.com/search?q=${encodeURIComponent(`${date} ${course} 馬場`)}`],["JRA","https://www.jra.go.jp/"],["netkeiba","https://www.netkeiba.com/"]];$("searchLinks").innerHTML=links.map(([n,u])=>`<a class="inline" href="${u}" target="_blank" rel="noopener noreferrer">${n}</a>`).join(" / ");}
+function currentBase(){return {raceDate:$("raceDate").value,racecourse:$("racecourse").value,raceNo:$("raceNo").value,raceClass:$("raceClass").value,surface:$("surface").value,distance:$("distance").value,horseCount:$("horseCount").value,raceType:$("raceType").value,autoMemo:$("autoMemo").value.trim(),updatedAt:new Date().toLocaleString("ja-JP")};}
+function buildPrePrompt(){return `あなたは競馬2軸ランキング分析AIです。
+
+対象レース：
+【${$("raceDate").value||""} ${$("racecourse").value||""} ${$("raceNo").value||""}】
+
+クラス/レース名：
+${$("raceClass").value||"なし"}
+
+馬場種別/距離/頭数：
+${$("surface").value||"なし"} / ${$("distance").value||"なし"} / ${$("horseCount").value||"なし"}
+
+自動整理メモ：
+${$("autoMemo").value.trim()||"なし"}
+
+公開情報メモ：
+${$("publicInfoPre").value.trim()||"なし"}
+
+追記メモ：
+${$("userMemoPre").value.trim()||"なし"}
+
+今回は画像なしで、ネット検索で取得できる最新の公開情報をもとに前日版を作成してください。
+
+重視する前提：
+・縦軸＝能力再現性
+・横軸＝展開適性
+・近2走重視
+・直線ロジック重視
+・軸候補は1頭
+・分類は 本命候補 / 相手本線 / 強穴 / 軽視候補
+・最終表示は 馬名｜信頼度 を基本にする
+
+出力形式：
+① 簡潔な全体見解
+② 各馬を「馬名：分類 : 短評」で整理
+③ 最後に「馬名｜信頼度」の一覧`; }
+function buildDayPrompt(){return `あなたは競馬2軸ランキング分析AIです。
+
+対象レース：
+【${$("raceDate").value||""} ${$("racecourse").value||""} ${$("raceNo").value||""}】
+
+保存済み前日版：
+${$("savedPrePreview").value.trim()||"なし"}
+
+当日公開情報メモ：
+${$("publicInfoDay").value.trim()||"なし"}
+
+当日追記メモ：
+${$("userMemoDay").value.trim()||"なし"}
+
+今回は前日版を土台にして、当日の最新公開情報で微調整してください。
+
+特に重視する点：
+・当日の馬場状態
+・当日ここまでのトラックバイアス
+・内外有利
+・前残り / 差し傾向
+・時計の出方
+・含水率や風の影響
+・馬体重、取消、乗り替わり、気配やオッズ変化
+
+出力形式：
+① 前日版からの変更点
+② 更新後の各馬を「馬名：分類 : 短評」で整理
+③ 最後に「馬名｜信頼度」の当日版一覧`; }
+function refreshPrompts(){$("prePrompt").value=buildPrePrompt();$("dayPrompt").value=buildDayPrompt();}
+async function copyText(id){const text=$(id).value;try{await navigator.clipboard.writeText(text);alert("コピーしました。");}catch{$(id).select();document.execCommand("copy");alert("コピーしました。");}}
+function getCurrentHorseList(){const rec=allRecords()[keyOfRace()];return rec?.horses||[];}
+function persistCurrent(extra={}){const all=allRecords();const key=keyOfRace();const prev=all[key]||{};all[key]={...prev,...currentBase(),publicInfoPre:$("publicInfoPre").value.trim(),userMemoPre:$("userMemoPre").value.trim(),preResult:$("preResult").value.trim(),publicInfoDay:$("publicInfoDay").value.trim(),userMemoDay:$("userMemoDay").value.trim(),dayResult:$("dayResult").value.trim(),horses:prev.horses||[],createdAt:prev.createdAt||new Date().toLocaleString("ja-JP"),...extra};saveRecords(all);}
+function addHorse(){const name=$("horseNameInput").value.trim();const category=$("horseCategoryInput").value;const trust=$("horseTrustInput").value;const finish=$("horseFinishInput").value?Number($("horseFinishInput").value):"";if(!name||!category||!trust){alert("馬名・分類・信頼度を入れてください。");return;}const list=getCurrentHorseList();list.push({name,category,trust,finishPosition:finish});persistCurrent({horses:list});renderAll();clearHorseForm();}
+function clearHorseForm(){["horseNameInput","horseCategoryInput","horseTrustInput","horseFinishInput"].forEach(id=>$(id).value="");}
+function updateHorseFinish(index,value){const list=getCurrentHorseList();list[index].finishPosition=value?Number(value):"";persistCurrent({horses:list});renderAll();}
+function removeHorse(index){const list=getCurrentHorseList();list.splice(index,1);persistCurrent({horses:list});renderAll();}
+function renderHorseTable(){const list=getCurrentHorseList();$("horseTable").innerHTML=list.length?list.map((h,i)=>`<tr><td>${h.name}</td><td>${h.category}</td><td>${h.trust}</td><td><input type="number" value="${h.finishPosition ?? ""}" onchange="updateHorseFinish(${i}, this.value)" style="width:90px"></td><td><button class="red" onclick="removeHorse(${i})">削除</button></td></tr>`).join(""):`<tr><td colspan="5" class="empty">まだ登録されていません。</td></tr>`;}
+function savePre(){persistCurrent();$("savedPrePreview").value=$("preResult").value;renderAll();alert("前日版を保存しました。");}
+function saveDay(){persistCurrent();renderAll();alert("当日版を保存しました。");}
+function fillForm(rec){$("raceDate").value=rec.raceDate||todayStr();$("racecourse").value=rec.racecourse||"";$("raceNo").value=rec.raceNo||"";$("raceClass").value=rec.raceClass||"";$("surface").value=rec.surface||"";$("distance").value=rec.distance||"";$("horseCount").value=rec.horseCount||"";$("raceType").value=rec.raceType||"";$("autoMemo").value=rec.autoMemo||buildAutoMemo();$("publicInfoPre").value=rec.publicInfoPre||"";$("userMemoPre").value=rec.userMemoPre||"";$("preResult").value=rec.preResult||"";$("savedPrePreview").value=rec.preResult||"";$("publicInfoDay").value=rec.publicInfoDay||"";$("userMemoDay").value=rec.userMemoDay||"";$("dayResult").value=rec.dayResult||"";refreshPrompts();renderHorseTable();renderRecommendHorses();}
+function loadRecord(key,target="Pre"){const rec=allRecords()[key];if(!rec)return;fillForm(rec);setTab(target);}
+function deleteRecord(key){const all=allRecords();delete all[key];saveRecords(all);renderAll();}
+function allHorseRecords(){const out=[];Object.values(allRecords()).forEach(rec=>{(rec.horses||[]).forEach(h=>{const finish=h.finishPosition?Number(h.finishPosition):0;out.push({racecourse:rec.racecourse||"",distance:String(rec.distance||""),surface:rec.surface||"",category:h.category||"",trust:h.trust||"",name:h.name||"",finishPosition:finish||"",winFlag:finish===1,placeFlag:finish>=1&&finish<=3});});});return out;}
+function trustStats(){const out={};TRUSTS.forEach(t=>out[t]={count:0,win:0,place:0});allHorseRecords().forEach(r=>{if(!r.trust||!r.finishPosition)return;out[r.trust].count+=1;if(r.winFlag)out[r.trust].win+=1;if(r.placeFlag)out[r.trust].place+=1;});return out;}
+function keyForHorse(h){return [$("racecourse").value,String($("distance").value||""),$("surface").value,h.category,h.trust].join("|");}
+function historicalByKey(key){const rows=allHorseRecords().filter(r=>[r.racecourse,r.distance,r.surface,r.category,r.trust].join("|")===key&&r.finishPosition);const count=rows.length,win=rows.filter(x=>x.winFlag).length,place=rows.filter(x=>x.placeFlag).length;return {count,win,place,placeRate:count?place/count:0,winRate:count?win/count:0};}
+function renderRecommendHorses(){const list=getCurrentHorseList();const box=$("recommendHorseBox");if(!list.length){box.className="empty";box.textContent="まず今回の馬を登録してください。";$("homeRecoHorseCount").textContent="0";return;}const recos=list.map(h=>({horse:h,stats:historicalByKey(keyForHorse(h))})).filter(x=>x.stats.count>=10&&x.stats.placeRate>=0.90).sort((a,b)=>b.stats.placeRate-a.stats.placeRate||b.stats.count-a.stats.count);$("homeRecoHorseCount").textContent=String(recos.length);if(!recos.length){box.className="empty";box.textContent="今回条件では、複勝率90%以上かつ母数10以上の推奨馬はいません。";return;}box.className="";box.innerHTML=recos.map(x=>`<div class="list-item"><div class="list-title gold">推奨馬：${x.horse.name}</div><div class="result">${$("racecourse").value} × ${$("distance").value}m × ${$("surface").value} × ${x.horse.category} × ${x.horse.trust}
+複勝率 ${(x.stats.placeRate*100).toFixed(1)}% / 母数 ${x.stats.count}
+単勝率 ${(x.stats.winRate*100).toFixed(1)}%</div></div>`).join("");}
+function conditionRows(){const map={};allHorseRecords().forEach(r=>{if(!r.finishPosition)return;const key=[r.racecourse,r.distance,r.surface,r.category,r.trust].join(" × ");if(!map[key])map[key]={count:0,win:0,place:0};map[key].count+=1;if(r.winFlag)map[key].win+=1;if(r.placeFlag)map[key].place+=1;});return Object.entries(map).map(([key,v])=>({key,...v,placeRate:v.count?v.place/v.count:0})).sort((a,b)=>b.placeRate-a.placeRate||b.count-a.count);}
+function renderHome(){const races=Object.values(allRecords());const horses=allHorseRecords();const t=trustStats();const aCount=t.S.count+t.A.count;const aPlace=aCount?((t.S.place+t.A.place)/aCount*100).toFixed(1)+"%":"-";$("homeSaved").textContent=String(races.length);$("homeHorseCount").textContent=String(horses.length);$("homeAPlace").textContent=aPlace;}
+function renderList(){const items=Object.entries(allRecords()).sort((a,b)=>(a[1].updatedAt<b[1].updatedAt?1:-1));const box=$("recordList");if(!items.length){box.textContent="まだ保存されていません。";box.className="empty";return;}box.className="";box.innerHTML=items.map(([key,rec])=>`<div class="list-item"><div class="list-title">${rec.raceDate||""} ${rec.racecourse||""} ${rec.raceNo||""}</div><div class="result">更新: ${rec.updatedAt||""}
+登録馬数: ${(rec.horses||[]).length}</div><div class="row" style="margin-top:10px"><button class="green" onclick="loadRecord('${key.replace(/'/g,"&#39;")}','Pre')">前日版</button><button class="orange" onclick="loadRecord('${key.replace(/'/g,"&#39;")}','Day')">当日版</button><button class="secondary" onclick="loadRecord('${key.replace(/'/g,"&#39;")}','Horses')">馬一覧</button><button class="red" onclick="deleteRecord('${key.replace(/'/g,"&#39;")}')">削除</button></div></div>`).join("");}
+function renderTrustTable(){const t=trustStats();$("trustTable").innerHTML=TRUSTS.map(k=>{const v=t[k];return `<tr><td><strong>${k}</strong></td><td>${v.count}</td><td>${v.win}</td><td>${v.place}</td><td>${pct(v.win,v.count)}</td><td>${pct(v.place,v.count)}</td></tr>`;}).join("");}
+function renderRecoTable(){const rows=conditionRows();$("recoTable").innerHTML=rows.length?rows.map(r=>`<tr><td>${r.key}</td><td>${r.count}</td><td>${r.win}</td><td>${r.place}</td><td>${pct(r.win,r.count)}</td><td>${pct(r.place,r.count)}</td></tr>`).join(""):`<tr><td colspan="6" class="empty">まだ条件データがありません。</td></tr>`;}
+function renderAll(){renderHome();renderList();renderHorseTable();renderRecommendHorses();renderTrustTable();renderRecoTable();refreshPrompts();}
+$("tabHome").addEventListener("click",()=>setTab("Home"));$("tabPre").addEventListener("click",()=>setTab("Pre"));$("tabDay").addEventListener("click",()=>setTab("Day"));$("tabHorses").addEventListener("click",()=>setTab("Horses"));$("tabRecoHorse").addEventListener("click",()=>setTab("RecoHorse"));$("tabList").addEventListener("click",()=>setTab("List"));$("tabStats").addEventListener("click",()=>setTab("Stats"));$("tabReco").addEventListener("click",()=>setTab("Reco"));
+$("toPre").addEventListener("click",()=>setTab("Pre"));$("toDay").addEventListener("click",()=>setTab("Day"));$("toHorses").addEventListener("click",()=>setTab("Horses"));$("toRecoHorse").addEventListener("click",()=>setTab("RecoHorse"));
+$("fillAuto").addEventListener("click",()=>{$("autoMemo").value=buildAutoMemo();refreshPrompts();alert("自動整理メモを更新しました。");});
+$("buildLinks").addEventListener("click",buildLinks);$("saveAll").addEventListener("click",()=>{persistCurrent();renderAll();alert("保存しました。");});
+$("copyPrePrompt").addEventListener("click",()=>copyText("prePrompt"));$("copyDayPrompt").addEventListener("click",()=>copyText("dayPrompt"));
+$("savePre").addEventListener("click",savePre);$("saveDay").addEventListener("click",saveDay);$("addHorse").addEventListener("click",addHorse);$("clearHorseForm").addEventListener("click",clearHorseForm);
+$("saveHorseList").addEventListener("click",()=>{persistCurrent({horses:getCurrentHorseList()});renderAll();alert("馬一覧を保存しました。");});
+["raceDate","racecourse","raceNo","raceClass","surface","distance","horseCount","raceType","autoMemo","publicInfoPre","userMemoPre","publicInfoDay","userMemoDay","preResult","dayResult"].forEach(id=>{$(id).addEventListener("input",()=>{refreshPrompts();renderRecommendHorses();});$(id).addEventListener("change",()=>{refreshPrompts();renderRecommendHorses();});});
+window.loadRecord=loadRecord;window.deleteRecord=deleteRecord;window.removeHorse=removeHorse;window.updateHorseFinish=updateHorseFinish;
+initSelects();$("autoMemo").value=buildAutoMemo();renderAll();
+</script>
+</body>
+</html>
