@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>競馬 収集&画像化アプリ v6.2</title>
+<style>
+:root{
+  --bg1:#0c1017; --bg2:#121827; --card:#171c27; --line:#2a3141;
+  --text:#f4f7fb; --sub:#aeb6c8; --blue:#2d6ff3; --green:#1ca56d;
+  --gray:#212a39; --red:#b04848; --gold1:#f5d36a; --gold2:#c99810;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; padding:14px; color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic","Segoe UI",sans-serif;
+  background:linear-gradient(180deg,var(--bg1),var(--bg2));
+}
+.wrap{max-width:860px;margin:0 auto}
+h1{font-size:26px;line-height:1.2;margin:4px 0 8px}
+.sub{font-size:13px;color:var(--sub);line-height:1.7;margin-bottom:12px}
+.card{
+  background:rgba(23,28,39,.96); border:1px solid var(--line); border-radius:18px;
+  padding:14px; margin-bottom:12px; box-shadow:0 10px 28px rgba(0,0,0,.22);
+}
+.notice{background:#111723;border:1px solid #30384a;border-radius:14px;padding:12px;line-height:1.7;color:#dbe7ff;font-size:13px}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.grid{display:grid;grid-template-columns:1fr;gap:10px}
+button,.btn{
+  appearance:none;border:none;border-radius:12px;padding:11px 13px;font-size:14px;font-weight:800;
+  color:#fff;background:var(--blue);box-shadow:0 6px 16px rgba(45,111,243,.28);cursor:pointer;
+}
+button.secondary{background:var(--gray);box-shadow:none;border:1px solid #364055}
+button.green{background:var(--green)}
+button.red{background:var(--red)}
+label{display:block;font-size:12px;color:var(--sub);margin-bottom:5px;font-weight:700}
+input,select,textarea{
+  width:100%; display:block; border-radius:12px; border:1px solid #343b49;
+  background:#0f131b; color:var(--text); padding:11px 12px; font-size:16px; outline:none;
+}
+.tabs{display:flex;gap:6px;overflow:auto;padding-bottom:4px;margin-bottom:12px}
+.tab{white-space:nowrap;background:#1b2331;border:1px solid #33425f;color:#d8e4ff}
+.tab.active{outline:2px solid #5f98ff;background:var(--blue)}
+.view{display:none}.view.active{display:block}
+.kicker{font-size:12px;color:#d9e6ff;margin-bottom:8px}
+.log{white-space:pre-wrap;line-height:1.7;font-size:13px;background:#0f131b;border:1px solid #30384a;border-radius:12px;padding:12px;min-height:84px}
+.tablewrap{overflow:auto}
+table{width:100%;border-collapse:collapse;min-width:640px;background:#111722}
+th,td{padding:9px 7px;border-bottom:1px solid #2a3140;text-align:left;font-size:13px}
+th{background:#151b27;color:#d8e4ff}
+.empty{color:#8e98aa}
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.modebtn{padding:12px 14px;border-radius:14px;background:#151e2c;border:1px solid #33425f;color:#dbe7ff;font-weight:800;cursor:pointer;text-align:center}
+.modebtn.active{outline:2px solid #5f98ff;background:#21427f}
+.previewWrap{display:flex;justify-content:center}
+#raceImageCard{
+  width:100%; max-width:520px; min-height:360px; border-radius:22px; overflow:hidden;
+  background:linear-gradient(180deg,#111723,#1a2233); border:1px solid #2d3647; box-shadow:0 18px 38px rgba(0,0,0,.28);
+}
+.imgHeader{padding:18px 18px 12px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.imgTitle{font-size:24px;font-weight:900;line-height:1.25}
+.imgMeta{font-size:12px;color:#c9d6ee;line-height:1.7;text-align:right}
+.imgBody{padding:14px 14px 18px}
+.horseRow{
+  display:flex;justify-content:space-between;align-items:center;gap:8px;padding:12px 12px;margin-bottom:10px;
+  border-radius:16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07)
+}
+.horseName{font-size:19px;font-weight:900;line-height:1.25;word-break:break-all}
+.trustBox{
+  min-width:58px;text-align:center;padding:9px 10px;border-radius:12px;font-size:22px;font-weight:900;
+  background:#22314f;border:1px solid #3a4a68;color:#fff
+}
+.recoRow{
+  border:1px solid rgba(245,211,106,.6); background:linear-gradient(180deg,rgba(245,211,106,.14),rgba(201,152,16,.10));
+  box-shadow:0 0 24px rgba(245,211,106,.18), inset 0 0 0 1px rgba(255,240,180,.12);
+}
+.recoBadge{
+  display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:900;padding:5px 9px;border-radius:999px;
+  background:linear-gradient(180deg,var(--gold1),var(--gold2));color:#2d2200;border:1px solid rgba(255,255,255,.28)
+}
+.tagline{font-size:12px;color:#d8e4ff;margin-top:4px}
+.footerNote{padding:0 14px 16px;color:#90a1c0;font-size:11px;line-height:1.6}
+.smallmuted{font-size:12px;color:var(--sub)}
+@media (max-width:640px){ .modes{grid-template-columns:1fr} .imgTitle{font-size:20px} .horseName{font-size:17px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>競馬 収集&画像化アプリ v6.2</h1>
+  <div class="sub">用途を2つに絞った版です。<strong>レース予想CSVは画像1枚化</strong>、<strong>過去レースCSVは収集</strong>に使います。検索画面や長文保存は入れていません。</div>
+
+  <div class="card">
+    <div class="notice">窓口は1つです。<br>① <strong>レース予想CSV</strong> を読み込む → 前日版 / 当日版の画像1枚を作成<br>② <strong>過去レースCSV</strong> を読み込む → 信頼度別成績、タグ別集計、推奨条件を収集（母数別しきい値）</div>
+  </div>
+
+  <div class="card">
+    <div class="kicker">CSV取り込み</div>
+    <div class="modes" style="margin-bottom:12px">
+      <div id="modePrediction" class="modebtn active">レース予想CSV → 画像化</div>
+      <div id="modeHistory" class="modebtn">過去レースCSV → 収集</div>
+    </div>
+    <div class="grid">
+      <div>
+        <label for="csvFile">CSVファイル</label>
+        <input id="csvFile" type="file" accept=".csv" />
+      </div>
+      <div class="row">
+        <button id="importCsv" class="green">CSVを取り込む</button>
+        <button id="downloadTemplate" class="secondary">CSV雛形を保存</button>
+        <button id="resetAll" class="red">全データ削除</button>
+      </div>
+      <div>
+        <label>取り込みログ</label>
+        <div id="importLog" class="log">まだ取り込んでいません。</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button id="tabImage" class="tab active">画像</button>
+    <button id="tabCollect" class="tab">収集</button>
+  </div>
+
+  <div id="viewImage" class="view active">
+    <div class="card">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <div>
+          <div class="kicker" style="margin-bottom:4px">画像設定</div>
+          <div class="smallmuted">前日版 / 当日版のどちらかを選び、タイトルと表示内容を整えます。</div>
+        </div>
+        <div class="row">
+          <button id="setPre" class="secondary">前日版</button>
+          <button id="setDay" class="secondary">当日版</button>
+          <button id="downloadPng">PNG保存</button>
+        </div>
+      </div>
+      <div class="grid" style="margin-top:12px">
+        <div>
+          <label for="imgTitleInput">タイトル</label>
+          <input id="imgTitleInput" value="前日ランキング" />
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="previewWrap">
+        <div id="raceImageCard">
+          <div class="imgHeader">
+            <div>
+              <div id="imgTitle" class="imgTitle">前日ランキング</div>
+              <div id="imgSub" class="tagline">CSVを読み込むとここに馬名と信頼度が並びます。</div>
+            </div>
+            <div id="imgMeta" class="imgMeta">-</div>
+          </div>
+          <div id="imgHorseList" class="imgBody"><div class="empty">まだデータがありません。</div></div>
+          <div class="footerNote">推奨馬がいる場合は 🔥 と発光で表示します。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="viewCollect" class="view">
+    <div class="card">
+      <div class="kicker">信頼度別成績</div>
+      <div class="tablewrap"><table><thead><tr><th>信頼度</th><th>件数</th><th>1着数</th><th>3着内数</th><th>単勝率</th><th>複勝率</th></tr></thead><tbody id="trustTable"></tbody></table></div>
+    </div>
+    <div class="card">
+      <div class="kicker">タグ別集計 / 推奨条件</div>
+      <div class="smallmuted" style="margin-bottom:10px">集計キー：競馬場 × 距離 × 芝orダ × 分類 × 信頼度。母数3で90%以上 / 母数5で80%以上 / 母数10で75%以上 / 母数50で65%以上を推奨表示。</div>
+      <div class="tablewrap"><table><thead><tr><th>条件</th><th>件数</th><th>1着数</th><th>3着内数</th><th>単勝率</th><th>複勝率</th><th>推奨</th></tr></thead><tbody id="tagTable"></tbody></table></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DB_NAME = 'keiba_v6_light';
+const DB_VER = 1;
+const STORE_PRED = 'prediction';
+const STORE_HIST = 'history';
+let currentMode = 'prediction';
+let currentPredictionRows = [];
+
+const $ = id => document.getElementById(id);
+const pct = (a,b)=>!b?'-':((a/b)*100).toFixed(1)+'%';
+
+function setMode(mode){
+  currentMode = mode;
+  $('modePrediction').classList.toggle('active', mode==='prediction');
+  $('modeHistory').classList.toggle('active', mode==='history');
+}
+function setTab(name){
+  $('tabImage').classList.toggle('active', name==='image');
+  $('tabCollect').classList.toggle('active', name==='collect');
+  $('viewImage').classList.toggle('active', name==='image');
+  $('viewCollect').classList.toggle('active', name==='collect');
+}
+$('modePrediction').onclick=()=>setMode('prediction');
+$('modeHistory').onclick=()=>setMode('history');
+$('tabImage').onclick=()=>setTab('image');
+$('tabCollect').onclick=()=>setTab('collect');
+$('setPre').onclick=()=>{$('imgTitleInput').value='前日ランキング';syncTitle();};
+$('setDay').onclick=()=>{$('imgTitleInput').value='当日ランキング';syncTitle();};
+$('imgTitleInput').addEventListener('input', syncTitle);
+function syncTitle(){ $('imgTitle').textContent = $('imgTitleInput').value || 'ランキング'; }
+
+function openDB(){
+  return new Promise((resolve,reject)=>{
+    const req = indexedDB.open(DB_NAME, DB_VER);
+    req.onupgradeneeded = e => {
+      const db = e.target.result;
+      if(!db.objectStoreNames.contains(STORE_PRED)) db.createObjectStore(STORE_PRED,{keyPath:'id',autoIncrement:true});
+      if(!db.objectStoreNames.contains(STORE_HIST)) db.createObjectStore(STORE_HIST,{keyPath:'id',autoIncrement:true});
+    };
+    req.onsuccess = ()=>resolve(req.result);
+    req.onerror = ()=>reject(req.error);
+  });
+}
+async function clearStore(storeName){
+  const db = await openDB();
+  return new Promise((resolve,reject)=>{
+    const tx = db.transaction(storeName,'readwrite');
+    tx.objectStore(storeName).clear();
+    tx.oncomplete=()=>resolve();
+    tx.onerror=()=>reject(tx.error);
+  });
+}
+async function addMany(storeName, rows){
+  const db = await openDB();
+  return new Promise((resolve,reject)=>{
+    const tx = db.transaction(storeName,'readwrite');
+    const store = tx.objectStore(storeName);
+    rows.forEach(r=>store.add(r));
+    tx.oncomplete=()=>resolve();
+    tx.onerror=()=>reject(tx.error);
+  });
+}
+async function getAllRows(storeName){
+  const db = await openDB();
+  return new Promise((resolve,reject)=>{
+    const tx = db.transaction(storeName,'readonly');
+    const req = tx.objectStore(storeName).getAll();
+    req.onsuccess=()=>resolve(req.result||[]);
+    req.onerror=()=>reject(req.error);
+  });
+}
+
+function parseCSV(text){
+  const rows=[]; let row=[]; let cur=''; let q=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i], n=text[i+1];
+    if(c==='"'){
+      if(q && n==='"'){ cur+='"'; i++; }
+      else q=!q;
+    }else if(c===',' && !q){ row.push(cur); cur=''; }
+    else if((c==='\n' || c==='\r') && !q){
+      if(c==='\r' && n==='\n') i++;
+      row.push(cur); rows.push(row); row=[]; cur='';
+    }else{ cur+=c; }
+  }
+  if(cur.length || row.length){ row.push(cur); rows.push(row); }
+  return rows.filter(r=>r.some(v=>String(v).trim()!==''));
+}
+function toObjects(rows){
+  if(!rows.length) return [];
+  const headers = rows[0].map(h=>String(h).trim());
+  return rows.slice(1).map(r=>{
+    const o={}; headers.forEach((h,i)=>o[h]=(r[i]??'').trim()); return o;
+  });
+}
+function norm(s){ return String(s||'').trim(); }
+function getVal(obj, keys){ for(const k of keys){ if(obj[k]!==undefined && obj[k]!==null && obj[k]!=='') return String(obj[k]).trim(); } return ''; }
+function normalizePredictionRow(obj){
+  const raceDate = getVal(obj,['raceDate','date','日付']);
+  const racecourse = getVal(obj,['racecourse','venue','場所','場名']);
+  const raceNo = getVal(obj,['raceNo','race_number','R','レース']);
+  const raceClass = getVal(obj,['raceClass','race_name','レース名']);
+  const surface = getVal(obj,['surface','芝ダ']);
+  const distance = getVal(obj,['distance','距離']);
+  const horseCount = getVal(obj,['horseCount','頭数']);
+  const horseName = getVal(obj,['horseName','horse_name','馬名']);
+  const category = getVal(obj,['category','categoryCandidate']);
+  const trust = getVal(obj,['trust','trustCandidate']);
+  const finishPosition = getVal(obj,['finishPosition','確定着順','着順']);
+  const comment = getVal(obj,['comment','shortComment']);
+  return {raceDate,racecourse,raceNo,raceClass,surface,distance,horseCount,horseName,category,trust,finishPosition,comment};
+}
+function normalizeHistoryRow(obj){
+  const raceDate = getVal(obj,['raceDate','date','日付']);
+  const racecourse = getVal(obj,['racecourse','venue','場所','場名']);
+  const raceNo = getVal(obj,['raceNo','race_number','R','レース']);
+  const surface = getVal(obj,['surface','芝ダ']);
+  const distance = getVal(obj,['distance','距離']);
+  const category = getVal(obj,['category','categoryCandidate']);
+  const trust = getVal(obj,['trust','trustCandidate']);
+  const finishPosition = getVal(obj,['finishPosition','確定着順','着順']);
+  return {raceDate,racecourse,raceNo,surface,distance,category,trust,finishPosition};
+}
+function recommendationKeys(rows){
+  const map = {};
+  rows.forEach(r=>{
+    const key = [r.racecourse,r.distance,r.surface,r.category,r.trust].map(norm).join(' × ');
+    if(!map[key]) map[key] = {count:0,win:0,place:0};
+    const fp = Number(r.finishPosition||0);
+    map[key].count += 1;
+    if(fp===1) map[key].win += 1;
+    if(fp>=1 && fp<=3) map[key].place += 1;
+  });
+  return Object.entries(map).map(([key,v])=>{
+    const placeRate = v.count ? v.place/v.count : 0;
+    let reco = false;
+    if(v.count >= 50 && placeRate >= 0.65) reco = true;
+    else if(v.count >= 10 && placeRate >= 0.75) reco = true;
+    else if(v.count >= 5 && placeRate >= 0.80) reco = true;
+    else if(v.count >= 3 && placeRate >= 0.90) reco = true;
+    return {key,...v,placeRate,winRate:v.count? v.win/v.count:0,reco};
+  }).sort((a,b)=>b.placeRate-a.placeRate || b.count-a.count);
+}
+function trustStats(rows){
+  const trusts = ['S','A','B','C','D'];
+  return trusts.map(t=>{
+    const list = rows.filter(r=>norm(r.trust)===t);
+    const count = list.length;
+    const win = list.filter(r=>Number(r.finishPosition||0)===1).length;
+    const place = list.filter(r=>{ const f=Number(r.finishPosition||0); return f>=1 && f<=3; }).length;
+    return {trust:t,count,win,place};
+  });
+}
+function renderPredictionImage(rows){
+  currentPredictionRows = rows.slice();
+  if(!rows.length){
+    $('imgHorseList').innerHTML = '<div class="empty">まだデータがありません。</div>';
+    $('imgMeta').textContent = '-';
+    $('imgSub').textContent = 'CSVを読み込むとここに馬名と信頼度が並びます。';
+    return;
+  }
+  const first = rows[0];
+  const tagStats = recommendationKeys(awaitSafeHistoryCache ?? []);
+  const recoSet = new Set(tagStats.filter(x=>x.reco).map(x=>x.key));
+  const list = rows.map(r=>{
+    const key = [r.racecourse,r.distance,r.surface,r.category,r.trust].map(norm).join(' × ');
+    const reco = recoSet.has(key);
+    return {...r,reco};
+  });
+  $('imgMeta').innerHTML = `${first.raceDate||'-'}<br>${first.racecourse||'-'} ${first.raceNo||''}`;
+  $('imgSub').textContent = `${first.raceClass||''} / ${first.surface||''}${first.distance||''} / ${first.horseCount||''}頭`;
+  $('imgHorseList').innerHTML = list.map(r=>`
+    <div class="horseRow ${r.reco?'recoRow':''}">
+      <div style="flex:1;min-width:0">
+        <div class="horseName">${r.horseName||'-'}</div>
+        <div class="tagline">${r.reco?'<span class="recoBadge">🔥 推奨馬</span> ':''}${r.category||''}</div>
+      </div>
+      <div class="trustBox">${r.trust||'-'}</div>
+    </div>`).join('');
+}
+let awaitSafeHistoryCache = [];
+async function renderHistory(){
+  const rows = await getAllRows(STORE_HIST);
+  awaitSafeHistoryCache = rows;
+  const t = trustStats(rows);
+  $('trustTable').innerHTML = t.map(v=>`<tr><td><strong>${v.trust}</strong></td><td>${v.count}</td><td>${v.win}</td><td>${v.place}</td><td>${pct(v.win,v.count)}</td><td>${pct(v.place,v.count)}</td></tr>`).join('') || '<tr><td colspan="6" class="empty">まだありません。</td></tr>';
+  const tags = recommendationKeys(rows);
+  $('tagTable').innerHTML = tags.length ? tags.map(v=>`<tr><td>${v.key}</td><td>${v.count}</td><td>${v.win}</td><td>${v.place}</td><td>${pct(v.win,v.count)}</td><td>${pct(v.place,v.count)}</td><td>${v.reco ? '🔥 推奨' : '-'}</td></tr>`).join('') : '<tr><td colspan="7" class="empty">まだありません。</td></tr>';
+}
+async function handleImport(){
+  const file = $('csvFile').files[0];
+  if(!file){ alert('CSVを選択してください。'); return; }
+  try{
+    const text = await file.text();
+    const rows = toObjects(parseCSV(text));
+    if(currentMode==='prediction'){
+      const slim = rows.map(normalizePredictionRow).filter(r=>r.horseName);
+      if(!slim.length) throw new Error('レース予想CSVとして読める行がありません。');
+      await clearStore(STORE_PRED);
+      await addMany(STORE_PRED, slim);
+      renderPredictionImage(slim);
+      $('importLog').textContent = `取り込み完了\nモード: レース予想CSV\n行数: ${slim.length}\nレース数: ${new Set(slim.map(r=>`${r.raceDate}__${r.racecourse}__${r.raceNo}`)).size}`;
+      setTab('image');
+    }else{
+      const slim = rows.map(normalizeHistoryRow).filter(r=>r.racecourse && r.distance && r.surface && r.category && r.trust);
+      if(!slim.length) throw new Error('過去レースCSVとして読める行がありません。');
+      await clearStore(STORE_HIST);
+      await addMany(STORE_HIST, slim);
+      await renderHistory();
+      $('importLog').textContent = `取り込み完了\nモード: 過去レースCSV\n行数: ${slim.length}\nタグ条件数: ${recommendationKeys(slim).length}`;
+      const pred = await getAllRows(STORE_PRED);
+      if(pred.length) renderPredictionImage(pred);
+      setTab('collect');
+    }
+  }catch(err){
+    $('importLog').textContent = `取り込み失敗\n${err.message||err}`;
+    alert(`CSV取り込み失敗: ${err.message||err}`);
+  }
+}
+$('importCsv').onclick = handleImport;
+$('resetAll').onclick = async ()=>{
+  if(!confirm('保存済みデータを全部削除します。よろしいですか？')) return;
+  await clearStore(STORE_PRED); await clearStore(STORE_HIST);
+  currentPredictionRows=[]; awaitSafeHistoryCache=[]; renderPredictionImage([]); await renderHistory();
+  $('importLog').textContent='全データを削除しました。';
+};
+$('downloadTemplate').onclick = ()=>{
+  const headers = currentMode==='prediction'
+    ? ['raceDate','racecourse','raceNo','raceClass','surface','distance','horseCount','horseName','category','trust','finishPosition','comment']
+    : ['raceDate','racecourse','raceNo','surface','distance','category','trust','finishPosition'];
+  const blob = new Blob([headers.join(',')+'\n'],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=currentMode==='prediction'?'prediction_template.csv':'history_template.csv'; a.click(); URL.revokeObjectURL(a.href);
+};
+$('downloadPng').onclick = async ()=>{
+  const node = $('raceImageCard');
+  const width = 520, height = Math.max(node.scrollHeight, 360);
+  const cloned = node.cloneNode(true);
+  cloned.style.width = width+'px';
+  const svg = `
+  <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+    <foreignObject width="100%" height="100%">${new XMLSerializer().serializeToString(cloned)}</foreignObject>
+  </svg>`;
+  const img = new Image();
+  const blob = new Blob([svg], {type:'image/svg+xml;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  img.onload = ()=>{
+    const canvas = document.createElement('canvas'); canvas.width=width*2; canvas.height=height*2;
+    const ctx = canvas.getContext('2d'); ctx.scale(2,2); ctx.drawImage(img,0,0);
+    URL.revokeObjectURL(url);
+    const a=document.createElement('a'); a.href=canvas.toDataURL('image/png'); a.download='keiba_ranking.png'; a.click();
+  };
+  img.src=url;
+};
+(async function init(){
+  syncTitle(); renderPredictionImage([]); await renderHistory();
+})();
+</script>
+</body>
+</html>
