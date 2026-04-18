@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>競馬 収集&画像化アプリ v6.6</title>
+<title>競馬 収集&画像化アプリ v6.7</title>
 <style>
 :root{--bg1:#0d1016;--bg2:#141925;--card:#171a21;--line:#2a2f3a;--text:#f5f7fb;--sub:#aeb7c7;--blue:#2f6fed;--green:#1a9c6b;--orange:#be7a12;--gray:#1f2735;--red:#a63f3f;--gold:#caa64d}
 *{box-sizing:border-box}
@@ -27,7 +27,7 @@ label{display:block;font-size:12px;color:var(--sub);margin-bottom:5px;font-weigh
 .stat{border:1px solid #313847;border-radius:14px;padding:10px;background:#121722}
 .statbig{font-size:20px;font-weight:800}
 .tablewrap{overflow:auto}
-table{width:100%;border-collapse:collapse;min-width:720px;background:#111722}
+table{width:100%;border-collapse:collapse;min-width:760px;background:#111722}
 th,td{padding:9px 7px;border-bottom:1px solid #2a3140;text-align:left;font-size:13px}
 th{background:#151b27;color:#d8e4ff}
 .empty{color:#8e98aa}
@@ -40,17 +40,19 @@ th{background:#151b27;color:#d8e4ff}
 </head>
 <body>
 <div class="wrap">
-<h1>競馬 収集&画像化アプリ v6.6</h1>
-<div class="sub">収集条件は「競馬場 × 距離 × 芝/ダート × 分類 × 信頼度」です。予想レースCSVは画像化、過去レースCSVは収集専用です。</div>
+<h1>競馬 収集&画像化アプリ v6.7</h1>
+<div class="sub">推奨判定は「競馬場 × 距離 × 芝/ダート × 信頼度」のみで行います。分類は推奨条件に使いません。</div>
 
 <div class="card"><div class="notice">
 推奨馬はアプリが <strong>母数と複勝率から自動判定</strong> します。<br>
-判定条件は次のいずれかです。<br>
-・母数50以上 かつ 複勝率50%以上<br>
-・母数30以上 かつ 複勝率60%以上<br>
-・母数10以上 かつ 複勝率75%以上<br>
-収集条件は <strong>競馬場 × 距離 × 芝/ダート × 分類 × 信頼度</strong> です。クラスは使いません。<br>
-予想レース画像では、条件一致した馬を <strong>🔥 推奨</strong> で強調表示します。
+推奨条件は <strong>競馬場 × 距離 × 芝/ダート × 信頼度</strong> のみです。<br>
+内部ロジックは「複勝率50%以上を強く優遇」しつつ、母数が多い条件を高く評価するよう調整しています。<br>
+基準の目安：<br>
+・母数100以上なら複勝率50%以上で強く評価<br>
+・母数50以上なら複勝率52%以上で評価<br>
+・母数20以上なら複勝率58%以上で評価<br>
+・母数10以上なら複勝率65%以上で評価<br>
+画像では条件一致した馬を <strong>🔥 推奨</strong> で強調表示します。
 </div></div>
 
 <div class="card">
@@ -96,7 +98,7 @@ th{background:#151b27;color:#d8e4ff}
 </div>
 
 <script>
-const DB_NAME="keiba_collection_v66",DB_VERSION=1,STORE_HISTORY="historyRows";
+const DB_NAME="keiba_collection_v67",DB_VERSION=1,STORE_HISTORY="historyRows";
 let db=null,historyRows=[],predictionRows=[],raceMap=new Map();
 const $=id=>document.getElementById(id);
 
@@ -111,14 +113,20 @@ function normalizePredictionRow(r){return{raceDate:r.raceDate||"",racecourse:r.r
 function detectPredictionFormat(rows){if(!rows.length)return false;const keys=Object.keys(rows[0]);return["raceDate","racecourse","raceNo","horseName","category","trust"].every(k=>keys.includes(k));}
 function buildRaceKey(r){return[r.raceDate,r.racecourse,r.raceNo,r.raceClass,r.surface,r.distance].join("__");}
 function pct(a,b){if(!b)return"-";return(a/b*100).toFixed(1)+"%";}
-function recommendByCountPlace(count,placeRate){if(count>=50&&placeRate>=0.50)return true;if(count>=30&&placeRate>=0.60)return true;if(count>=10&&placeRate>=0.75)return true;return false;}
-function aggregateHistory(){const map=new Map();for(const r of historyRows){const key=[r.racecourse,r.distance,r.surface,r.category,r.trust].join("|");const cur=map.get(key)||{count:0,win:0,place:0};cur.count+=1;if(r.finishPosition===1)cur.win+=1;if(r.finishPosition>=1&&r.finishPosition<=3)cur.place+=1;map.set(key,cur);}return map;}
-function updateSummary(){$("savedCount").textContent=String(historyRows.length);const comboSet=new Set(historyRows.map(r=>[r.racecourse,r.distance,r.surface,r.category,r.trust].join("|")));$("comboCount").textContent=String(comboSet.size);$("predRaceCount").textContent=String(raceMap.size);$("predHorseCount").textContent=String(predictionRows.length);}
+function recommendByCountPlace(count,placeRate){
+  if(count>=100 && placeRate>=0.50) return true;
+  if(count>=50 && placeRate>=0.52) return true;
+  if(count>=20 && placeRate>=0.58) return true;
+  if(count>=10 && placeRate>=0.65) return true;
+  return false;
+}
+function aggregateHistory(){const map=new Map();for(const r of historyRows){const key=[r.racecourse,r.distance,r.surface,r.trust].join("|");const cur=map.get(key)||{count:0,win:0,place:0};cur.count+=1;if(r.finishPosition===1)cur.win+=1;if(r.finishPosition>=1&&r.finishPosition<=3)cur.place+=1;map.set(key,cur);}return map;}
+function updateSummary(){$("savedCount").textContent=String(historyRows.length);const comboSet=new Set(historyRows.map(r=>[r.racecourse,r.distance,r.surface,r.trust].join("|")));$("comboCount").textContent=String(comboSet.size);$("predRaceCount").textContent=String(raceMap.size);$("predHorseCount").textContent=String(predictionRows.length);}
 function populateRaceSelector(){const sel=$("raceSelector"),entries=Array.from(raceMap.entries());sel.innerHTML=entries.length?entries.map(([k,rows])=>{const r=rows[0];return `<option value="${k}">${r.raceDate} ${r.racecourse} ${r.raceNo} ${r.raceClass}</option>`;}).join(""):`<option value="">予想CSVを読み込んでください</option>`;}
 function escapeHtml(str){return String(str??"").replace(/[&<>"']/g,s=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[s]));}
-function renderStatsForRace(){const key=$("raceSelector").value,rows=raceMap.get(key)||[],agg=aggregateHistory(),tbody=$("statsTable");if(!rows.length){tbody.innerHTML=`<tr><td colspan="10" class="empty">予想CSVを読み込むと表示されます。</td></tr>`;return;}tbody.innerHTML=rows.map(r=>{const condKey=[r.racecourse,r.distance,r.surface,r.category,r.trust].join("|"),chosen=agg.get(condKey)||{count:0,win:0,place:0},placeRate=chosen.count?chosen.place/chosen.count:0,rec=recommendByCountPlace(chosen.count,placeRate),condLabel=`${r.racecourse}×${r.distance}×${r.surface}×${r.category}×${r.trust}`;return `<tr><td>${escapeHtml(r.horseName)}</td><td>${escapeHtml(r.trust)}</td><td>${escapeHtml(r.category)}</td><td>${escapeHtml(condLabel)}</td><td>${chosen.count}</td><td>${chosen.win}</td><td>${chosen.place}</td><td>${pct(chosen.win,chosen.count)}</td><td>${pct(chosen.place,chosen.count)}</td><td>${rec?'<span class="badge fire">🔥 推奨</span>':'-'}</td></tr>`;}).join("");}
+function renderStatsForRace(){const key=$("raceSelector").value,rows=raceMap.get(key)||[],agg=aggregateHistory(),tbody=$("statsTable");if(!rows.length){tbody.innerHTML=`<tr><td colspan="10" class="empty">予想CSVを読み込むと表示されます。</td></tr>`;return;}tbody.innerHTML=rows.map(r=>{const condKey=[r.racecourse,r.distance,r.surface,r.trust].join("|"),chosen=agg.get(condKey)||{count:0,win:0,place:0},placeRate=chosen.count?chosen.place/chosen.count:0,rec=recommendByCountPlace(chosen.count,placeRate),condLabel=`${r.racecourse}×${r.distance}×${r.surface}×${r.trust}`;return `<tr><td>${escapeHtml(r.horseName)}</td><td>${escapeHtml(r.trust)}</td><td>${escapeHtml(r.category)}</td><td>${escapeHtml(condLabel)}</td><td>${chosen.count}</td><td>${chosen.win}</td><td>${chosen.place}</td><td>${pct(chosen.win,chosen.count)}</td><td>${pct(chosen.place,chosen.count)}</td><td>${rec?'<span class="badge fire">🔥 推奨</span>':'-'}</td></tr>`;}).join("");}
 function roundRect(ctx,x,y,w,h,r,fill,stroke){if(w<2*r)r=w/2;if(h<2*r)r=h/2;ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();if(fill)ctx.fill();if(stroke)ctx.stroke();}
-function renderRaceImage(){const key=$("raceSelector").value,rows=(raceMap.get(key)||[]).slice(),c=$("raceCanvas"),ctx=c.getContext("2d");if(!rows.length){ctx.clearRect(0,0,c.width,c.height);ctx.fillStyle="#0f131b";ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle="#d7e5ff";ctx.font="bold 28px sans-serif";ctx.fillText("予想CSVを読み込んでください",40,80);return;}const agg=aggregateHistory(),title=`${rows[0].raceDate} ${rows[0].racecourse} ${rows[0].raceNo}`,sub=`${rows[0].raceClass} / ${rows[0].surface}${rows[0].distance} / ${rows[0].horseCount}頭`,rowH=72,topH=150;c.height=topH+24+rows.length*rowH+30;c.width=720;const grad=ctx.createLinearGradient(0,0,0,c.height);grad.addColorStop(0,"#0d1016");grad.addColorStop(1,"#141925");ctx.fillStyle=grad;ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle="#f5f7fb";ctx.font="bold 36px sans-serif";ctx.fillText(title,28,54);ctx.fillStyle="#aeb7c7";ctx.font="22px sans-serif";ctx.fillText(sub,28,92);ctx.fillStyle="#d8e4ff";ctx.font="bold 20px sans-serif";ctx.fillText("ランキング画像",28,126);rows.forEach((r,idx)=>{const y=topH+idx*rowH;ctx.fillStyle=idx%2===0?"#171a21":"#121722";roundRect(ctx,16,y,c.width-32,rowH-10,16,true,false);const condKey=[r.racecourse,r.distance,r.surface,r.category,r.trust].join("|"),chosen=agg.get(condKey)||{count:0,win:0,place:0},placeRate=chosen.count?chosen.place/chosen.count:0,rec=recommendByCountPlace(chosen.count,placeRate);ctx.fillStyle="#f5f7fb";ctx.font="bold 28px sans-serif";ctx.fillText(r.horseName,34,y+42);const boxX=560,boxY=y+13,boxW=110,boxH=38;ctx.fillStyle=rec?"rgba(202,166,77,0.18)":"#1b2331";ctx.strokeStyle=rec?"#caa64d":"#33425f";ctx.lineWidth=rec?2:1;roundRect(ctx,boxX,boxY,boxW,boxH,14,true,true);ctx.fillStyle=rec?"#ffd783":"#d8e4ff";ctx.font="bold 24px sans-serif";ctx.textAlign="center";ctx.fillText(r.trust||"-",boxX+boxW/2,boxY+27);ctx.textAlign="left";if(rec){ctx.fillStyle="#ffd783";ctx.font="bold 22px sans-serif";ctx.fillText("🔥 推奨",34,y+66);}else{ctx.fillStyle="#aeb7c7";ctx.font="18px sans-serif";ctx.fillText(r.category||"",34,y+66);}});}
+function renderRaceImage(){const key=$("raceSelector").value,rows=(raceMap.get(key)||[]).slice(),c=$("raceCanvas"),ctx=c.getContext("2d");if(!rows.length){ctx.clearRect(0,0,c.width,c.height);ctx.fillStyle="#0f131b";ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle="#d7e5ff";ctx.font="bold 28px sans-serif";ctx.fillText("予想CSVを読み込んでください",40,80);return;}const agg=aggregateHistory(),title=`${rows[0].raceDate} ${rows[0].racecourse} ${rows[0].raceNo}`,sub=`${rows[0].raceClass} / ${rows[0].surface}${rows[0].distance} / ${rows[0].horseCount}頭`,rowH=72,topH=150;c.height=topH+24+rows.length*rowH+30;c.width=720;const grad=ctx.createLinearGradient(0,0,0,c.height);grad.addColorStop(0,"#0d1016");grad.addColorStop(1,"#141925");ctx.fillStyle=grad;ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle="#f5f7fb";ctx.font="bold 36px sans-serif";ctx.fillText(title,28,54);ctx.fillStyle="#aeb7c7";ctx.font="22px sans-serif";ctx.fillText(sub,28,92);ctx.fillStyle="#d8e4ff";ctx.font="bold 20px sans-serif";ctx.fillText("ランキング画像",28,126);rows.forEach((r,idx)=>{const y=topH+idx*rowH;ctx.fillStyle=idx%2===0?"#171a21":"#121722";roundRect(ctx,16,y,c.width-32,rowH-10,16,true,false);const condKey=[r.racecourse,r.distance,r.surface,r.trust].join("|"),chosen=agg.get(condKey)||{count:0,win:0,place:0},placeRate=chosen.count?chosen.place/chosen.count:0,rec=recommendByCountPlace(chosen.count,placeRate);ctx.fillStyle="#f5f7fb";ctx.font="bold 28px sans-serif";ctx.fillText(r.horseName,34,y+42);const boxX=560,boxY=y+13,boxW=110,boxH=38;ctx.fillStyle=rec?"rgba(202,166,77,0.18)":"#1b2331";ctx.strokeStyle=rec?"#caa64d":"#33425f";ctx.lineWidth=rec?2:1;roundRect(ctx,boxX,boxY,boxW,boxH,14,true,true);ctx.fillStyle=rec?"#ffd783":"#d8e4ff";ctx.font="bold 24px sans-serif";ctx.textAlign="center";ctx.fillText(r.trust||"-",boxX+boxW/2,boxY+27);ctx.textAlign="left";if(rec){ctx.fillStyle="#ffd783";ctx.font="bold 22px sans-serif";ctx.fillText("🔥 推奨",34,y+66);}else{ctx.fillStyle="#aeb7c7";ctx.font="18px sans-serif";ctx.fillText(r.category||"",34,y+66);}});}
 async function importHistoryCSV(){const file=$("historyFile").files[0];if(!file){$("historyLog").textContent="CSVファイルを選んでください。";return;}try{const text=await file.text(),rows=parseCSV(text).map(normalizeHistoryRow).filter(r=>r.horseName&&r.racecourse&&r.raceDate);await clearStore();await saveHistoryRows(rows);historyRows=await loadHistoryRows();$("historyLog").textContent=`過去データ取込完了: ${historyRows.length.toLocaleString()}行`;updateSummary();renderStatsForRace();renderRaceImage();}catch(e){$("historyLog").textContent="取込失敗: "+(e&&e.message?e.message:e);}}
 async function loadPredictionCSV(){const file=$("predictionFile").files[0];if(!file){$("predictionLog").textContent="CSVファイルを選んでください。";return;}try{const text=await file.text(),rows=parseCSV(text);if(!detectPredictionFormat(rows)){$("predictionLog").textContent="FinalCSV形式ではありません。";return;}predictionRows=rows.map(normalizePredictionRow).filter(r=>r.horseName&&r.racecourse&&r.raceNo);raceMap=new Map();for(const r of predictionRows){const key=buildRaceKey(r);if(!raceMap.has(key))raceMap.set(key,[]);raceMap.get(key).push(r);}populateRaceSelector();updateSummary();renderStatsForRace();renderRaceImage();$("predictionLog").textContent=`予想CSV読込完了: ${predictionRows.length.toLocaleString()}頭 / ${raceMap.size.toLocaleString()}レース`;}catch(e){$("predictionLog").textContent="読込失敗: "+(e&&e.message?e.message:e);}}
 function downloadCanvas(){const c=$("raceCanvas"),a=document.createElement("a");a.href=c.toDataURL("image/png");a.download="keiba_race_image.png";a.click();}
