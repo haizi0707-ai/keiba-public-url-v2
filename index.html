@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>競馬 収集&画像化アプリ v6</title>
+<title>競馬 収集&画像化アプリ v6.1</title>
 <style>
 :root{
   --bg1:#0c1017; --bg2:#121827; --card:#171c27; --line:#2a3141;
@@ -86,7 +86,7 @@ th{background:#151b27;color:#d8e4ff}
 </head>
 <body>
 <div class="wrap">
-  <h1>競馬 収集&画像化アプリ v6</h1>
+  <h1>競馬 収集&画像化アプリ v6.1</h1>
   <div class="sub">用途を2つに絞った版です。<strong>レース予想CSVは画像1枚化</strong>、<strong>過去レースCSVは収集</strong>に使います。検索画面や長文保存は入れていません。</div>
 
   <div class="card">
@@ -166,7 +166,7 @@ th{background:#151b27;color:#d8e4ff}
     </div>
     <div class="card">
       <div class="kicker">タグ別集計 / 推奨条件</div>
-      <div class="smallmuted" style="margin-bottom:10px">集計キー：競馬場 × 距離 × 芝orダ × 分類 × 信頼度。母数10以上・複勝率90%以上を推奨表示。</div>
+      <div class="smallmuted" style="margin-bottom:10px">集計キー：競馬場 × 距離 × 芝orダ × 分類 × 信頼度。母数6以上・複勝率80%以上を推奨表示。</div>
       <div class="tablewrap"><table><thead><tr><th>条件</th><th>件数</th><th>1着数</th><th>3着内数</th><th>単勝率</th><th>複勝率</th><th>推奨</th></tr></thead><tbody id="tagTable"></tbody></table></div>
     </div>
   </div>
@@ -305,7 +305,7 @@ function recommendationKeys(rows){
     if(fp===1) map[key].win += 1;
     if(fp>=1 && fp<=3) map[key].place += 1;
   });
-  return Object.entries(map).map(([key,v])=>({key,...v,placeRate:v.count? v.place/v.count:0, winRate:v.count? v.win/v.count:0, reco:v.count>=10 && (v.place/v.count)>=0.9})).sort((a,b)=>b.placeRate-a.placeRate || b.count-a.count);
+  return Object.entries(map).map(([key,v])=>({key,...v,placeRate:v.count? v.place/v.count:0, winRate:v.count? v.win/v.count:0, reco:v.count>=6 && (v.place/v.count)>=0.8})).sort((a,b)=>b.placeRate-a.placeRate || b.count-a.count);
 }
 function trustStats(rows){
   const trusts = ['S','A','B','C','D'];
