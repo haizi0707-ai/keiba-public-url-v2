@@ -1,1 +1,579 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>競馬予想アプリ iPhone版 v5</title>
+<style>
+:root{
+  --bg1:#0d1016; --bg2:#141925; --card:#171a21; --line:#2a2f3a;
+  --text:#f5f7fb; --sub:#aeb7c7; --blue:#2f6fed; --green:#1a9c6b;
+  --orange:#be7a12; --gray:#1f2735; --red:#a63f3f;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; padding:14px; color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic","Segoe UI",sans-serif;
+  background:linear-gradient(180deg,var(--bg1),var(--bg2));
+}
+.wrap{max-width:760px; margin:0 auto}
+h1{font-size:24px; margin:2px 0 6px}
+.sub{font-size:12px; color:var(--sub); line-height:1.7; margin-bottom:12px}
+.card{
+  background:rgba(23,26,33,.96); border:1px solid var(--line); border-radius:16px;
+  padding:13px; margin-bottom:12px; box-shadow:0 10px 28px rgba(0,0,0,.22); overflow:hidden;
+}
+.grid{display:grid; grid-template-columns:1fr; gap:10px}
+label{display:block; font-size:12px; color:var(--sub); margin-bottom:5px; font-weight:700}
+input,select,textarea{
+  width:100%; display:block; border-radius:12px; border:1px solid #343b49;
+  background:#0f131b; color:var(--text); padding:11px 12px; font-size:16px; outline:none;
+}
+textarea{min-height:108px; resize:vertical; line-height:1.65}
+.small{min-height:84px}
+.mid{min-height:140px}
+.big{min-height:230px}
+.row{display:flex; gap:8px; flex-wrap:wrap}
+button{
+  appearance:none; border:none; border-radius:12px; padding:11px 13px;
+  font-size:14px; font-weight:800; color:#fff; background:var(--blue);
+  box-shadow:0 6px 16px rgba(47,111,237,.28); cursor:pointer;
+}
+button.secondary{background:var(--gray); box-shadow:none; border:1px solid #364055}
+button.green{background:var(--green)}
+button.orange{background:var(--orange)}
+button.red{background:var(--red)}
+.tabs{display:flex; gap:6px; overflow:auto; padding-bottom:4px; margin-bottom:12px}
+.tab{white-space:nowrap; width:auto; background:#1b2331; border:1px solid #33425f; color:#d8e4ff}
+.tab.active{outline:2px solid #5f98ff; background:var(--blue)}
+.view{display:none}
+.view.active{display:block}
+.kicker{font-size:12px; color:#d9e6ff; margin-bottom:8px}
+.statgrid{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+.stat{border:1px solid #313847; border-radius:14px; padding:10px; background:#121722}
+.statbig{font-size:20px; font-weight:800}
+.list-item{border:1px solid #313847; border-radius:12px; padding:11px; margin-bottom:10px; background:#121722}
+.list-title{font-weight:800; margin-bottom:6px}
+.result{white-space:pre-wrap; line-height:1.75; font-size:14px}
+.tablewrap{overflow:auto}
+table{width:100%; border-collapse:collapse; min-width:560px; background:#111722}
+th,td{padding:9px 7px; border-bottom:1px solid #2a3140; text-align:left; font-size:13px}
+th{background:#151b27; color:#d8e4ff}
+.empty{color:#8e98aa}
+.notice{background:#111722; border:1px solid #313847; padding:10px 12px; border-radius:12px; color:#d7e5ff; font-size:12px; line-height:1.6}
+a.inline{color:#9ec5ff}
+.footer{color:#8e98aa; font-size:11px; line-height:1.7; padding:2px 2px 18px}
+.logbox{background:#0f131b; border:1px solid #313847; border-radius:12px; padding:10px 12px; min-height:84px; white-space:pre-wrap; line-height:1.7}
+.fileline{font-size:12px; color:#d7e5ff; margin-top:8px}
+.horsecard{border:1px solid #313847; border-radius:12px; padding:10px; background:#121722; margin-top:8px}
+.horsegrid{display:grid; grid-template-columns:1fr 70px 70px; gap:8px; align-items:center}
+.badge{display:inline-block; padding:3px 7px; border-radius:999px; font-size:12px; font-weight:700; border:1px solid #384053; background:#111722}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>競馬予想アプリ 公開URL版 v5</h1>
+  <div class="sub">CSVインポート対応版です。TARGET元CSVでも、完成済みFinalCSVでも読み込めます。判定キーは 競馬場 × 距離 × 芝ダ × 分類 × 信頼度。複勝率90%以上・母数10以上で推奨馬表示します。</div>
 
+  <div class="card">
+    <div class="notice">過去3年分のCSVを一括で読み込めます。保存はブラウザ内です。まずCSVで土台データを作り、その後の予想データを随時追加していく運用向けです。</div>
+  </div>
+
+  <div class="card">
+    <div class="kicker">CSVインポート / エクスポート</div>
+    <div class="grid">
+      <div>
+        <label for="csvFile">CSVを読み込む</label>
+        <input id="csvFile" type="file" accept=".csv" />
+        <div id="fileName" class="fileline">ファイル未選択</div>
+      </div>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button id="importCsv" class="green">CSVを取り込む</button>
+      <button id="exportTemplate" class="secondary">CSV雛形を保存</button>
+    </div>
+    <div class="kicker" style="margin-top:14px">ブラウザ保存データの書き出し</div>
+    <div class="notice">今のブラウザ内データをJSONで保存できます。バックアップ用です。</div>
+    <div class="row" style="margin-top:10px">
+      <button id="jsonBackup" class="secondary">JSONバックアップ</button>
+      <button id="deleteAll" class="red">全データ削除</button>
+    </div>
+    <div class="kicker" style="margin-top:14px">CSV取り込みログ</div>
+    <div id="csvLog" class="logbox empty">まだ取り込んでいません。</div>
+  </div>
+
+  <div class="card">
+    <div class="kicker">共通入力</div>
+    <div class="grid">
+      <div>
+        <label for="raceDate">レース日</label>
+        <input id="raceDate" type="date" />
+      </div>
+      <div>
+        <label for="racecourse">競馬場</label>
+        <select id="racecourse"></select>
+      </div>
+      <div>
+        <label for="raceNo">レース</label>
+        <select id="raceNo"></select>
+      </div>
+      <div>
+        <label for="raceClass">クラス / レース名</label>
+        <input id="raceClass" placeholder="例：3勝クラス / G2 / オープン" />
+      </div>
+      <div>
+        <label for="surface">馬場種別</label>
+        <select id="surface">
+          <option value="">選択</option>
+          <option>芝</option>
+          <option>ダート</option>
+          <option>障害</option>
+        </select>
+      </div>
+      <div>
+        <label for="distance">距離</label>
+        <input id="distance" type="number" placeholder="例：1600" />
+      </div>
+      <div>
+        <label for="horseCount">頭数</label>
+        <input id="horseCount" type="number" placeholder="例：16" />
+      </div>
+      <div>
+        <label for="raceType">レース種別タグ</label>
+        <select id="raceType">
+          <option value="">選択</option>
+          <option>新馬・未勝利以外</option>
+          <option>1勝クラス</option>
+          <option>2勝クラス</option>
+          <option>3勝クラス</option>
+          <option>オープン</option>
+          <option>重賞</option>
+        </select>
+      </div>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button id="fillAuto" class="secondary">情報を整理</button>
+      <button id="buildLinks" class="secondary">検索リンク</button>
+      <button id="saveAll" class="secondary">保存</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button id="tabHome" class="tab active">ホーム</button>
+    <button id="tabPre" class="tab">前日版</button>
+    <button id="tabDay" class="tab">当日版</button>
+    <button id="tabResult" class="tab">結果</button>
+    <button id="tabList" class="tab">一覧</button>
+    <button id="tabStats" class="tab">集計</button>
+    <button id="tabReco" class="tab">推奨</button>
+  </div>
+
+  <div id="viewHome" class="view active">
+    <div class="statgrid">
+      <div class="stat"><div class="kicker">保存レース数</div><div id="homeSaved" class="statbig">0</div></div>
+      <div class="stat"><div class="kicker">結果入力済み</div><div id="homeDone" class="statbig">0</div></div>
+      <div class="stat"><div class="kicker">A以上 複勝率</div><div id="homeAPlace" class="statbig">-</div></div>
+      <div class="stat"><div class="kicker">推奨条件数</div><div id="homeReco" class="statbig">0</div></div>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <div class="kicker">検索リンク</div>
+      <div id="searchLinks" class="result empty">まだ作成されていません。</div>
+    </div>
+    <div class="card">
+      <div class="kicker">現在選択レースの登録馬</div>
+      <div id="horsePreview" class="empty">CSV取り込み後、競馬場とレースを選ぶと表示されます。</div>
+    </div>
+  </div>
+
+  <div id="viewPre" class="view">
+    <div class="card">
+      <label for="autoMemo">自動整理メモ</label>
+      <textarea id="autoMemo" class="mid"></textarea>
+      <div style="margin-top:10px">
+        <label for="publicInfoPre">公開情報メモ</label>
+        <textarea id="publicInfoPre" class="mid" placeholder="出馬表、近2走、脚質、ラップ、馬場想定、ペース想定など"></textarea>
+      </div>
+      <div style="margin-top:10px">
+        <label for="userMemoPre">追記メモ</label>
+        <textarea id="userMemoPre" class="small" placeholder="前日版で追記したい内容"></textarea>
+      </div>
+    </div>
+    <div class="card">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <div class="kicker" style="margin:0">ChatGPT用テキスト</div>
+        <button id="copyPrePrompt" class="green">コピー</button>
+      </div>
+      <textarea id="prePrompt" class="big"></textarea>
+    </div>
+    <div class="card">
+      <label for="preResult">前日版結果</label>
+      <textarea id="preResult" class="big" placeholder="ChatGPTで出た前日版結果をここへ貼り付け"></textarea>
+      <div class="row" style="margin-top:10px">
+        <button id="savePre" class="green">前日版を保存</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="viewDay" class="view">
+    <div class="card">
+      <label for="savedPrePreview">保存済み前日版</label>
+      <textarea id="savedPrePreview" class="mid" readonly></textarea>
+    </div>
+    <div class="card">
+      <label for="publicInfoDay">当日公開情報メモ</label>
+      <textarea id="publicInfoDay" class="mid" placeholder="当日の馬場、TB、時計、馬体重、気配、オッズなど"></textarea>
+      <div style="margin-top:10px">
+        <label for="userMemoDay">当日追記メモ</label>
+        <textarea id="userMemoDay" class="mid" placeholder="当日版で追記したい内容"></textarea>
+      </div>
+    </div>
+    <div class="card">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <div class="kicker" style="margin:0">ChatGPT用テキスト</div>
+        <button id="copyDayPrompt" class="orange">コピー</button>
+      </div>
+      <textarea id="dayPrompt" class="big"></textarea>
+    </div>
+    <div class="card">
+      <label for="dayResult">当日版結果</label>
+      <textarea id="dayResult" class="big" placeholder="ChatGPTで出た当日版結果をここへ貼り付け"></textarea>
+      <div class="row" style="margin-top:10px">
+        <button id="saveDay" class="orange">当日版を保存</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="viewResult" class="view">
+    <div class="card">
+      <label for="axisHorse">軸馬名</label>
+      <input id="axisHorse" placeholder="例：○○○○" />
+      <div style="margin-top:10px">
+        <label for="axisTrust">信頼度</label>
+        <select id="axisTrust"><option value="">選択</option><option>S</option><option>A</option><option>B</option><option>C</option><option>D</option></select>
+      </div>
+      <div style="margin-top:10px">
+        <label for="axisCategory">分類</label>
+        <select id="axisCategory"><option value="">選択</option><option>本命候補</option><option>相手本線</option><option>強穴</option><option>穴候補</option><option>軽視候補</option></select>
+      </div>
+      <div style="margin-top:10px">
+        <label for="finishPosition">着順</label>
+        <input id="finishPosition" type="number" placeholder="例：1" />
+      </div>
+      <div style="margin-top:10px">
+        <label for="straightType">直線タイプ</label>
+        <select id="straightType"><option value="">選択</option><option>長い直線</option><option>短い直線</option></select>
+      </div>
+      <div style="margin-top:10px">
+        <label for="fieldSizeType">頭数タグ</label>
+        <select id="fieldSizeType"><option value="">選択</option><option>少頭数</option><option>標準頭数</option><option>多頭数</option></select>
+      </div>
+      <div style="margin-top:10px">
+        <label for="paceType">ペースタグ</label>
+        <select id="paceType"><option value="">選択</option><option>スロー想定</option><option>ミドル想定</option><option>ハイ想定</option></select>
+      </div>
+      <div style="margin-top:10px">
+        <label for="courseType">コースタグ</label>
+        <select id="courseType"><option value="">選択</option><option>芝短距離</option><option>芝マイル</option><option>芝中距離</option><option>芝長距離</option><option>ダート短距離</option><option>ダートマイル</option><option>ダート中距離</option></select>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <button id="saveResult" class="green">結果保存</button>
+        <button id="clearResult" class="secondary">クリア</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="viewList" class="view">
+    <div class="card"><div id="recordList" class="empty">まだ保存されていません。</div></div>
+  </div>
+
+  <div id="viewStats" class="view">
+    <div class="card">
+      <div class="tablewrap"><table><thead><tr><th>信頼度</th><th>延べ頭数</th><th>1着数</th><th>3着内数</th><th>単勝率</th><th>複勝率</th></tr></thead><tbody id="trustTable"></tbody></table></div>
+    </div>
+  </div>
+
+  <div id="viewReco" class="view">
+    <div class="card">
+      <div class="result">基準：延べ頭数10以上。推奨A = 複勝率90%以上、推奨B = 複勝率80%以上。</div>
+      <div class="tablewrap" style="margin-top:10px"><table><thead><tr><th>条件</th><th>延べ頭数</th><th>1着数</th><th>3着内数</th><th>単勝率</th><th>複勝率</th><th>判定</th></tr></thead><tbody id="recoTable"></tbody></table></div>
+    </div>
+  </div>
+
+  <div class="footer">スマホ専用運用版。保存はこのiPhone内です。</div>
+</div>
+
+<script>
+const STORAGE_KEY = "keiba_iphone_only_v5_records";
+const IMPORT_KEY = "keiba_iphone_only_v5_imports";
+const TRUSTS = ["S","A","B","C","D"];
+const COURSES = ["札幌競馬場","函館競馬場","福島競馬場","新潟競馬場","東京競馬場","中山競馬場","中京競馬場","京都競馬場","阪神競馬場","小倉競馬場"];
+const RACES = Array.from({length:12},(_,i)=>`${i+1}R`);
+const $ = id => document.getElementById(id);
+
+function todayStr(){const d=new Date();const z=d.getTimezoneOffset()*60000;return new Date(d-z).toISOString().slice(0,10);}
+function allRecords(){return JSON.parse(localStorage.getItem(STORAGE_KEY)||"{}");}
+function saveRecords(v){localStorage.setItem(STORAGE_KEY,JSON.stringify(v));}
+function importedRaces(){return JSON.parse(localStorage.getItem(IMPORT_KEY)||"{}");}
+function saveImported(v){localStorage.setItem(IMPORT_KEY,JSON.stringify(v));}
+function pct(a,b){if(!b)return "-";return (a/b*100).toFixed(1)+"%";}
+function courseShort(v){return String(v||"").replace("競馬場","");}
+function normalizeRaceNo(v){const s=String(v||"").replace(/[^0-9]/g,"");return s?`${Number(s)}R`:String(v||"");}
+function keyOfRace(){return `${$("raceDate").value}__${$("racecourse").value}__${$("raceNo").value}`;}
+function baseFromImported(rec){
+  if(!rec) return;
+  $("raceDate").value = rec.raceDate || $("raceDate").value;
+  $("racecourse").value = rec.racecourse || $("racecourse").value;
+  $("raceNo").value = rec.raceNo || $("raceNo").value;
+  $("raceClass").value = rec.raceClass || "";
+  $("surface").value = rec.surface || "";
+  $("distance").value = rec.distance || "";
+  $("horseCount").value = rec.horseCount || "";
+  if(!$("axisHorse").value && rec.horses?.length) {
+    const top = rec.horses.find(h => ["本命候補","相手本線","強穴","穴候補"].includes(h.category));
+    if(top) { $("axisHorse").value = top.horseName || ""; $("axisTrust").value = top.trust || ""; $("axisCategory").value = top.category || ""; }
+  }
+}
+function initSelects(){
+  $("raceDate").value = todayStr();
+  $("racecourse").innerHTML = '<option value="">競馬場を選択</option>' + COURSES.map(v=>`<option>${v}</option>`).join('');
+  $("raceNo").innerHTML = '<option value="">レースを選択</option>' + RACES.map(v=>`<option>${v}</option>`).join('');
+}
+function setTab(name){["Home","Pre","Day","Result","List","Stats","Reco"].forEach(n=>{$("tab"+n).classList.toggle("active",n===name);$("view"+n).classList.toggle("active",n===name);});}
+function buildAutoMemo(){return ["【確認したい情報】","・出馬表","・馬番 / 馬名 / 騎手 / 枠順","・コース形態 / 距離","・近2走内容","・前走、前々走の着順 / 着差 / 通過順","・脚質傾向","・ラップ傾向","・馬場想定","・ペース想定","・当日までに分かる範囲のコース傾向","","【評価方針】","・縦軸＝能力再現性","・横軸＝展開適性","・近2走重視","・直線ロジック重視","・軸候補は1頭","・分類は 本命候補 / 相手本線 / 強穴 / 軽視候補","・最終表示は 馬名｜信頼度"].join("\n");}
+function buildLinks(){
+  const date=$("raceDate").value||"", course=$("racecourse").value||"", race=$("raceNo").value||"";
+  const links=[["Google 出馬表",`https://www.google.com/search?q=${encodeURIComponent(`${date} ${course} ${race} 出馬表`)}`],["Google 予想",`https://www.google.com/search?q=${encodeURIComponent(`${date} ${course} ${race} 予想`)}`],["Google 馬場",`https://www.google.com/search?q=${encodeURIComponent(`${date} ${course} 馬場`)}`],["JRA","https://www.jra.go.jp/"],["netkeiba","https://www.netkeiba.com/"]];
+  $("searchLinks").innerHTML = links.map(([n,u])=>`<a class="inline" href="${u}" target="_blank" rel="noopener noreferrer">${n}</a>`).join(" / ");
+}
+function currentBase(){return {raceDate:$("raceDate").value,racecourse:$("racecourse").value,raceNo:$("raceNo").value,raceClass:$("raceClass").value,surface:$("surface").value,distance:$("distance").value,horseCount:$("horseCount").value,raceType:$("raceType").value,autoMemo:$("autoMemo").value.trim(),updatedAt:new Date().toLocaleString("ja-JP")};}
+function buildPrePrompt(){return `あなたは競馬2軸ランキング分析AIです。\n\n対象レース：\n【${$("raceDate").value||""} ${$("racecourse").value||""} ${$("raceNo").value||""}】\n\nクラス/レース名：\n${$("raceClass").value||"なし"}\n\n馬場種別/距離/頭数：\n${$("surface").value||"なし"} / ${$("distance").value||"なし"} / ${$("horseCount").value||"なし"}\n\n自動整理メモ：\n${$("autoMemo").value.trim()||"なし"}\n\n公開情報メモ：\n${$("publicInfoPre").value.trim()||"なし"}\n\n追記メモ：\n${$("userMemoPre").value.trim()||"なし"}\n\n今回は画像なしで、ネット検索で取得できる最新の公開情報をもとに前日版を作成してください。\n\n重視する前提：\n・縦軸＝能力再現性\n・横軸＝展開適性\n・近2走重視\n・直線ロジック重視\n・軸候補は1頭\n・分類は 本命候補 / 相手本線 / 強穴 / 軽視候補\n・最終表示は 馬名｜信頼度 を基本にする\n\n出力形式：\n① 簡潔な全体見解\n② 各馬を「馬名：分類 : 短評」で整理\n③ 最後に「馬名｜信頼度」の一覧`;}
+function buildDayPrompt(){return `あなたは競馬2軸ランキング分析AIです。\n\n対象レース：\n【${$("raceDate").value||""} ${$("racecourse").value||""} ${$("raceNo").value||""}】\n\n保存済み前日版：\n${$("savedPrePreview").value.trim()||"なし"}\n\n当日公開情報メモ：\n${$("publicInfoDay").value.trim()||"なし"}\n\n当日追記メモ：\n${$("userMemoDay").value.trim()||"なし"}\n\n今回は前日版を土台にして、当日の最新公開情報で微調整してください。\n\n特に重視する点：\n・当日の馬場状態\n・当日ここまでのトラックバイアス\n・内外有利\n・前残り / 差し傾向\n・時計の出方\n・含水率や風の影響\n・馬体重、取消、乗り替わり、気配やオッズ変化\n\n出力形式：\n① 前日版からの変更点\n② 更新後の各馬を「馬名：分類 : 短評」で整理\n③ 最後に「馬名｜信頼度」の当日版一覧`;}
+function refreshPrompts(){ $("prePrompt").value = buildPrePrompt(); $("dayPrompt").value = buildDayPrompt(); }
+async function copyText(id){const text=$(id).value;try{await navigator.clipboard.writeText(text);alert("コピーしました。");}catch{$(id).select();document.execCommand("copy");alert("コピーしました。");}}
+function saveAllCurrent(){
+  const all=allRecords(), key=keyOfRace(), prev=all[key]||{}, imported = importedRaces()[key]||{};
+  all[key]={...imported,...prev,...currentBase(),publicInfoPre:$("publicInfoPre").value.trim(),userMemoPre:$("userMemoPre").value.trim(),preResult:$("preResult").value.trim(),publicInfoDay:$("publicInfoDay").value.trim(),userMemoDay:$("userMemoDay").value.trim(),dayResult:$("dayResult").value.trim(),axisHorse:$("axisHorse").value.trim(),axisTrust:$("axisTrust").value,axisCategory:$("axisCategory").value,finishPosition:$("finishPosition").value,straightType:$("straightType").value,fieldSizeType:$("fieldSizeType").value,paceType:$("paceType").value,courseType:$("courseType").value,createdAt:prev.createdAt||new Date().toLocaleString("ja-JP")};
+  saveRecords(all);
+}
+function savePre(){saveAllCurrent();$("savedPrePreview").value=$("preResult").value;renderAll();alert("前日版を保存しました。");}
+function saveDay(){saveAllCurrent();renderAll();alert("当日版を保存しました。");}
+function saveResult(){
+  const all=allRecords(), key=keyOfRace(), prev=all[key]||{}, imported = importedRaces()[key]||{};
+  const finish=Number($("finishPosition").value||0);
+  all[key]={...imported,...prev,...currentBase(),publicInfoPre:$("publicInfoPre").value.trim(),userMemoPre:$("userMemoPre").value.trim(),preResult:$("preResult").value.trim(),publicInfoDay:$("publicInfoDay").value.trim(),userMemoDay:$("userMemoDay").value.trim(),dayResult:$("dayResult").value.trim(),axisHorse:$("axisHorse").value.trim(),axisTrust:$("axisTrust").value,axisCategory:$("axisCategory").value,finishPosition:finish||"",winFlag:finish===1,placeFlag:finish>=1&&finish<=3,straightType:$("straightType").value,fieldSizeType:$("fieldSizeType").value,paceType:$("paceType").value,courseType:$("courseType").value,createdAt:prev.createdAt||new Date().toLocaleString("ja-JP")};
+  saveRecords(all); renderAll(); alert("結果を保存して集計更新しました。");
+}
+function clearResult(){["axisHorse","axisTrust","axisCategory","finishPosition","straightType","fieldSizeType","paceType","courseType"].forEach(id=>$(id).value="");}
+function fillForm(rec){
+  $("raceDate").value=rec.raceDate||todayStr(); $("racecourse").value=rec.racecourse||""; $("raceNo").value=rec.raceNo||"";
+  $("raceClass").value=rec.raceClass||""; $("surface").value=rec.surface||""; $("distance").value=rec.distance||""; $("horseCount").value=rec.horseCount||"";
+  $("raceType").value=rec.raceType||""; $("autoMemo").value=rec.autoMemo||buildAutoMemo(); $("publicInfoPre").value=rec.publicInfoPre||""; $("userMemoPre").value=rec.userMemoPre||"";
+  $("preResult").value=rec.preResult||""; $("savedPrePreview").value=rec.preResult||""; $("publicInfoDay").value=rec.publicInfoDay||""; $("userMemoDay").value=rec.userMemoDay||"";
+  $("dayResult").value=rec.dayResult||""; $("axisHorse").value=rec.axisHorse||""; $("axisTrust").value=rec.axisTrust||""; $("axisCategory").value=rec.axisCategory||"";
+  $("finishPosition").value=rec.finishPosition||""; $("straightType").value=rec.straightType||""; $("fieldSizeType").value=rec.fieldSizeType||""; $("paceType").value=rec.paceType||""; $("courseType").value=rec.courseType||"";
+  refreshPrompts(); renderHorsePreview();
+}
+function loadRecord(key,target="Pre"){const rec={...(importedRaces()[key]||{}), ...(allRecords()[key]||{})}; if(!rec || !rec.raceDate) return; fillForm(rec); setTab(target);}
+function deleteRecord(key){const all=allRecords(); delete all[key]; saveRecords(all); renderAll();}
+function trustStats(){const out={}; TRUSTS.forEach(t=>out[t]={count:0,win:0,place:0}); Object.values(allRecords()).forEach(rec=>{if(!rec.axisTrust||!TRUSTS.includes(rec.axisTrust)||!rec.finishPosition)return; out[rec.axisTrust].count+=1; if(rec.winFlag)out[rec.axisTrust].win+=1; if(rec.placeFlag)out[rec.axisTrust].place+=1;}); return out;}
+function conditionStats(){
+  const map={};
+  Object.values(allRecords()).forEach(rec=>{
+    if(!rec.finishPosition) return;
+    const tags=[];
+    if(rec.racecourse) tags.push(`競馬場:${rec.racecourse}`);
+    if(rec.distance) tags.push(`距離:${rec.distance}`);
+    if(rec.surface) tags.push(`馬場:${rec.surface}`);
+    if(rec.axisCategory) tags.push(`分類:${rec.axisCategory}`);
+    if(rec.axisTrust) tags.push(`信頼度:${rec.axisTrust}`);
+    tags.forEach(tag=>{if(!map[tag])map[tag]={count:0,win:0,place:0}; map[tag].count+=1; if(rec.winFlag)map[tag].win+=1; if(rec.placeFlag)map[tag].place+=1;});
+    if(rec.racecourse&&rec.distance&&rec.surface&&rec.axisCategory&&rec.axisTrust){
+      const key=`${rec.racecourse} × ${rec.distance} × ${rec.surface} × ${rec.axisCategory} × ${rec.axisTrust}`;
+      if(!map[key]) map[key]={count:0,win:0,place:0};
+      map[key].count+=1; if(rec.winFlag)map[key].win+=1; if(rec.placeFlag)map[key].place+=1;
+    }
+  });
+  return map;
+}
+function renderHome(){
+  const saved = allRecords();
+  const imported = importedRaces();
+  const merged = {...imported, ...saved};
+  const t=trustStats(); const aCount=t.S.count+t.A.count; const aPlace=aCount?((t.S.place+t.A.place)/aCount*100).toFixed(1)+"%":"-";
+  const recoCount=Object.values(conditionStats()).filter(v=>v.count>=10&&v.place/v.count>=0.90).length;
+  $("homeSaved").textContent = String(Object.keys(merged).length);
+  $("homeDone").textContent = String(Object.values(saved).filter(r=>r.finishPosition).length);
+  $("homeAPlace").textContent = aPlace;
+  $("homeReco").textContent = String(recoCount);
+}
+function renderList(){
+  const imported = importedRaces(), saved = allRecords();
+  const keys = Array.from(new Set([...Object.keys(imported), ...Object.keys(saved)]));
+  const items = keys.map(k=>[k,{...(imported[k]||{}),...(saved[k]||{})}]).sort((a,b)=>(String(a[1].updatedAt||"")<String(b[1].updatedAt||"")?1:-1));
+  const box=$("recordList");
+  if(!items.length){box.textContent="まだ保存されていません。"; box.className="empty"; return;}
+  box.className="";
+  box.innerHTML=items.map(([key,rec])=>`<div class="list-item"><div class="list-title">${rec.raceDate||""} ${rec.racecourse||""} ${rec.raceNo||""}</div><div class="result">更新: ${rec.updatedAt||"CSV取込のみ"}${rec.horses?.length?` / 登録馬: ${rec.horses.length}頭`:""}</div><div class="row" style="margin-top:10px"><button class="green" onclick="loadRecord('${key.replace(/'/g,"&#39;")}','Pre')">前日版</button><button class="orange" onclick="loadRecord('${key.replace(/'/g,"&#39;")}','Day')">当日版</button><button class="secondary" onclick="loadRecord('${key.replace(/'/g,"&#39;")}','Result')">結果</button><button class="red" onclick="deleteRecord('${key.replace(/'/g,"&#39;")}')">削除</button></div></div>`).join("");
+}
+function renderTrustTable(){const t=trustStats(); $("trustTable").innerHTML=TRUSTS.map(k=>{const v=t[k]; return `<tr><td><strong>${k}</strong></td><td>${v.count}</td><td>${v.win}</td><td>${v.place}</td><td>${pct(v.win,v.count)}</td><td>${pct(v.place,v.count)}</td></tr>`;}).join("");}
+function renderRecoTable(){
+  const rows=Object.entries(conditionStats()).map(([k,v])=>{const placeRate=v.count?v.place/v.count:0; let judge="見送り"; if(v.count>=10&&placeRate>=0.90)judge="推奨A"; else if(v.count>=10&&placeRate>=0.80)judge="推奨B"; return {k,...v,judge,placeRate};}).sort((a,b)=>b.placeRate-a.placeRate||b.count-a.count);
+  $("recoTable").innerHTML=rows.length?rows.map(r=>`<tr><td>${r.k}</td><td>${r.count}</td><td>${r.win}</td><td>${r.place}</td><td>${pct(r.win,r.count)}</td><td>${pct(r.place,r.count)}</td><td><strong>${r.judge}</strong></td></tr>`).join(""):`<tr><td colspan="7" class="empty">結果入力後に表示されます。</td></tr>`;
+}
+function renderHorsePreview(){
+  const rec = importedRaces()[keyOfRace()] || {};
+  const box = $("horsePreview");
+  if(!rec.horses?.length){box.className="empty"; box.textContent="CSV取り込み後、競馬場とレースを選ぶと表示されます。"; return;}
+  box.className="";
+  box.innerHTML = rec.horses.map(h=>`<div class="horsecard"><div class="horsegrid"><div><strong>${h.horseName||""}</strong><div class="result">${h.comment||""}</div></div><div><span class="badge">${h.category||"-"}</span></div><div><span class="badge">${h.trust||"-"}</span></div></div></div>`).join("");
+}
+function renderAll(){renderHome(); renderList(); renderTrustTable(); renderRecoTable(); renderHorsePreview(); refreshPrompts();}
+function escapeCsv(v){const s=String(v??""); return /[",\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s;}
+function downloadText(filename, text, mime='text/plain;charset=utf-8'){const blob=new Blob([text],{type:mime}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),500);}
+function parseCsv(text){
+  const rows=[]; let row=[], cell="", q=false;
+  for(let i=0;i<text.length;i++){
+    const ch=text[i], nx=text[i+1];
+    if(q){ if(ch==='"'&&nx==='"'){cell+='"'; i++;} else if(ch==='"'){q=false;} else {cell+=ch;} }
+    else { if(ch==='"'){q=true;} else if(ch===','){row.push(cell); cell='';} else if(ch==='\n'){row.push(cell); rows.push(row); row=[]; cell='';} else if(ch==='\r'){} else {cell+=ch;} }
+  }
+  row.push(cell); rows.push(row);
+  return rows.filter(r=>r.some(c=>String(c).trim()!==""));
+}
+function normalizeHeaders(headers){return headers.map(h=>String(h||"").trim());}
+function detectFormat(headers){
+  const h = normalizeHeaders(headers);
+  if(["raceDate","racecourse","raceNo","raceClass","surface","distance","horseCount","horseName","category","trust","finishPosition","comment"].every(v=>h.includes(v))) return "final";
+  if(["年","月","日","場所","レース番号","略レース名","芝ダ","距離","頭数","馬場状態","馬名","騎手","枠番","馬番","確定着順","着差タイム"].every(v=>h.includes(v))) return "target";
+  return "unknown";
+}
+function toFinalRows(headers, dataRows){
+  const h = normalizeHeaders(headers);
+  const idx = Object.fromEntries(h.map((v,i)=>[v,i]));
+  const format = detectFormat(h);
+  if(format === 'final'){
+    return dataRows.map(r=>({
+      raceDate:r[idx.raceDate]||"",
+      racecourse:r[idx.racecourse]||"",
+      raceNo:normalizeRaceNo(r[idx.raceNo]||""),
+      raceClass:r[idx.raceClass]||"",
+      surface:r[idx.surface]||"",
+      distance:r[idx.distance]||"",
+      horseCount:r[idx.horseCount]||"",
+      horseName:r[idx.horseName]||"",
+      category:r[idx.category]||"",
+      trust:r[idx.trust]||"",
+      finishPosition:r[idx.finishPosition]||"",
+      comment:r[idx.comment]||""
+    }));
+  }
+  if(format === 'target'){
+    return dataRows.map(r=>({
+      raceDate:`20${String(r[idx['年']]||'').padStart(2,'0')}-${String(r[idx['月']]||'').padStart(2,'0')}-${String(r[idx['日']]||'').padStart(2,'0')}`,
+      racecourse:courseShort(r[idx['場所']]||"" ) + '競馬場',
+      raceNo:normalizeRaceNo(r[idx['レース番号']]||""),
+      raceClass:r[idx['略レース名']]||"",
+      surface:r[idx['芝ダ']]||"",
+      distance:r[idx['距離']]||"",
+      horseCount:r[idx['頭数']]||"",
+      horseName:r[idx['馬名']]||"",
+      category:"",
+      trust:"",
+      finishPosition:r[idx['確定着順']]||"",
+      comment:""
+    }));
+  }
+  throw new Error('未対応のCSV形式です。');
+}
+function importCsvFile(){
+  const file = $("csvFile").files[0];
+  if(!file){$("csvLog").className='logbox'; $("csvLog").textContent='CSVが選択されていません。'; return;}
+  const reader = new FileReader();
+  reader.onload = () => {
+    try{
+      const rows = parseCsv(String(reader.result||""));
+      if(rows.length < 2) throw new Error('CSVの行数が足りません。');
+      const headers = rows[0], dataRows = rows.slice(1);
+      const format = detectFormat(headers);
+      const finalRows = toFinalRows(headers, dataRows);
+      const imports = importedRaces();
+      const records = allRecords();
+      let raceCountBefore = Object.keys(imports).length;
+      finalRows.forEach(r=>{
+        const key = `${r.raceDate}__${r.racecourse}__${r.raceNo}`;
+        if(!imports[key]) imports[key] = {raceDate:r.raceDate,racecourse:r.racecourse,raceNo:r.raceNo,raceClass:r.raceClass,surface:r.surface,distance:r.distance,horseCount:r.horseCount,horses:[],updatedAt:new Date().toLocaleString('ja-JP')};
+        if(!imports[key].horses) imports[key].horses = [];
+        imports[key].raceClass = imports[key].raceClass || r.raceClass;
+        imports[key].surface = imports[key].surface || r.surface;
+        imports[key].distance = imports[key].distance || r.distance;
+        imports[key].horseCount = imports[key].horseCount || r.horseCount;
+        imports[key].updatedAt = new Date().toLocaleString('ja-JP');
+        const existing = imports[key].horses.findIndex(h=>h.horseName===r.horseName);
+        const item = {horseName:r.horseName, category:r.category, trust:r.trust, finishPosition:r.finishPosition, comment:r.comment};
+        if(existing >= 0) imports[key].horses[existing] = item; else imports[key].horses.push(item);
+        if(r.category || r.trust || r.comment){
+          records[key] = {...imports[key], ...(records[key]||{}), axisHorse:records[key]?.axisHorse || r.horseName, axisTrust:records[key]?.axisTrust || r.trust, axisCategory:records[key]?.axisCategory || r.category, finishPosition:records[key]?.finishPosition || r.finishPosition, updatedAt:new Date().toLocaleString('ja-JP')};
+        }
+      });
+      saveImported(imports); saveRecords(records);
+      const raceKeys = Object.keys(imports);
+      const latestKey = raceKeys.sort().slice(-1)[0];
+      if(latestKey){ baseFromImported(imports[latestKey]); }
+      renderAll();
+      $("csvLog").className='logbox';
+      $("csvLog").textContent = `取り込み完了\nレース数: ${Object.keys(imports).length}\n馬データ追加数: ${finalRows.length}\n入力形式: ${format === 'final' ? 'FinalCSV' : format === 'target' ? 'TARGET元CSV' : '不明'}\n新規レース数: ${Object.keys(imports).length - raceCountBefore}`;
+      alert('CSVを取り込みました。');
+    }catch(e){
+      $("csvLog").className='logbox';
+      $("csvLog").textContent = `取り込み失敗\n${e.message}`;
+      alert(`CSV取り込み失敗: ${e.message}`);
+    }
+  };
+  reader.readAsText(file, 'utf-8');
+}
+function exportTemplate(){
+  const header = ['raceDate','racecourse','raceNo','raceClass','surface','distance','horseCount','horseName','category','trust','finishPosition','comment'];
+  const sample = ['2026-04-18','阪神競馬場','11R','アンタレスS','ダート','1800','16','サンプルホース','本命候補','A','','短評'];
+  const text = [header.join(','), sample.map(escapeCsv).join(',')].join('\n');
+  downloadText('FinalCSV_template.csv', text, 'text/csv;charset=utf-8');
+}
+function jsonBackup(){downloadText(`keiba_backup_${todayStr()}.json`, JSON.stringify({records:allRecords(), imports:importedRaces()}, null, 2), 'application/json;charset=utf-8');}
+function deleteAll(){if(!confirm('ブラウザ内の保存データを全部削除します。よろしいですか？')) return; localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(IMPORT_KEY); renderAll(); $("csvLog").className='logbox empty'; $("csvLog").textContent='すべて削除しました。';}
+function handleRaceSelectionChange(){
+  const key = keyOfRace();
+  const merged = {...(importedRaces()[key]||{}), ...(allRecords()[key]||{})};
+  if(merged.raceDate) fillForm(merged);
+  renderHorsePreview();
+}
+
+$("tabHome").addEventListener("click",()=>setTab("Home"));
+$("tabPre").addEventListener("click",()=>setTab("Pre"));
+$("tabDay").addEventListener("click",()=>setTab("Day"));
+$("tabResult").addEventListener("click",()=>setTab("Result"));
+$("tabList").addEventListener("click",()=>setTab("List"));
+$("tabStats").addEventListener("click",()=>setTab("Stats"));
+$("tabReco").addEventListener("click",()=>setTab("Reco"));
+$("fillAuto").addEventListener("click",()=>{$("autoMemo").value=buildAutoMemo(); refreshPrompts(); alert("自動整理メモを更新しました。");});
+$("buildLinks").addEventListener("click",buildLinks);
+$("saveAll").addEventListener("click",()=>{saveAllCurrent(); renderAll(); alert("保存しました。");});
+$("copyPrePrompt").addEventListener("click",()=>copyText("prePrompt"));
+$("copyDayPrompt").addEventListener("click",()=>copyText("dayPrompt"));
+$("savePre").addEventListener("click",savePre);
+$("saveDay").addEventListener("click",saveDay);
+$("saveResult").addEventListener("click",saveResult);
+$("clearResult").addEventListener("click",clearResult);
+$("csvFile").addEventListener("change",()=>{$("fileName").textContent = $("csvFile").files[0]?.name || 'ファイル未選択';});
+$("importCsv").addEventListener("click",importCsvFile);
+$("exportTemplate").addEventListener("click",exportTemplate);
+$("jsonBackup").addEventListener("click",jsonBackup);
+$("deleteAll").addEventListener("click",deleteAll);
+["raceDate","racecourse","raceNo"].forEach(id=>{$(id).addEventListener("change",handleRaceSelectionChange);});
+["raceDate","racecourse","raceNo","raceClass","surface","distance","horseCount","raceType","autoMemo","publicInfoPre","userMemoPre","publicInfoDay","userMemoDay","preResult","dayResult"].forEach(id=>{$(id).addEventListener("input",refreshPrompts); $(id).addEventListener("change",refreshPrompts);});
+window.loadRecord = loadRecord; window.deleteRecord = deleteRecord;
+
+initSelects();
+$("autoMemo").value = buildAutoMemo();
+renderAll();
+</script>
+</body>
+</html>
