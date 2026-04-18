@@ -3,33 +3,52 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>競馬 収集&画像化アプリ v6.5</title>
+<title>競馬 収集&画像化アプリ v6.6</title>
 <style>
 :root{--bg1:#0d1016;--bg2:#141925;--card:#171a21;--line:#2a2f3a;--text:#f5f7fb;--sub:#aeb7c7;--blue:#2f6fed;--green:#1a9c6b;--orange:#be7a12;--gray:#1f2735;--red:#a63f3f;--gold:#caa64d}
-*{box-sizing:border-box}body{margin:0;padding:14px;color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic","Segoe UI",sans-serif;background:linear-gradient(180deg,var(--bg1),var(--bg2))}
-.wrap{max-width:920px;margin:0 auto}h1{font-size:24px;margin:2px 0 6px}.sub{font-size:12px;color:var(--sub);line-height:1.7;margin-bottom:12px}
+*{box-sizing:border-box}
+body{margin:0;padding:14px;color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic","Segoe UI",sans-serif;background:linear-gradient(180deg,var(--bg1),var(--bg2))}
+.wrap{max-width:920px;margin:0 auto}
+h1{font-size:24px;margin:2px 0 6px}
+.sub{font-size:12px;color:var(--sub);line-height:1.7;margin-bottom:12px}
 .card{background:rgba(23,26,33,.96);border:1px solid var(--line);border-radius:16px;padding:13px;margin-bottom:12px;box-shadow:0 10px 28px rgba(0,0,0,.22);overflow:hidden}
-.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.grid{display:grid;grid-template-columns:1fr;gap:10px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.grid{display:grid;grid-template-columns:1fr;gap:10px}
 button{appearance:none;border:none;border-radius:12px;padding:11px 13px;font-size:14px;font-weight:800;color:#fff;background:var(--blue);box-shadow:0 6px 16px rgba(47,111,237,.28);cursor:pointer}
-button.secondary{background:var(--gray);box-shadow:none;border:1px solid #364055}button.green{background:var(--green)}button.orange{background:var(--orange)}button.red{background:var(--red)}
+button.secondary{background:var(--gray);box-shadow:none;border:1px solid #364055}
+button.green{background:var(--green)}
+button.orange{background:var(--orange)}
+button.red{background:var(--red)}
 input,select{width:100%;display:block;border-radius:12px;border:1px solid #343b49;background:#0f131b;color:var(--text);padding:11px 12px;font-size:16px;outline:none}
-label{display:block;font-size:12px;color:var(--sub);margin-bottom:5px;font-weight:700}.small{font-size:12px;color:var(--sub)}
+label{display:block;font-size:12px;color:var(--sub);margin-bottom:5px;font-weight:700}
+.small{font-size:12px;color:var(--sub)}
 .notice{background:#111722;border:1px solid #313847;padding:10px 12px;border-radius:12px;color:#d7e5ff;font-size:12px;line-height:1.6}
-.statgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.stat{border:1px solid #313847;border-radius:14px;padding:10px;background:#121722}.statbig{font-size:20px;font-weight:800}
-.tablewrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:720px;background:#111722}th,td{padding:9px 7px;border-bottom:1px solid #2a3140;text-align:left;font-size:13px}th{background:#151b27;color:#d8e4ff}
-.empty{color:#8e98aa}.badge{display:inline-block;padding:4px 8px;border-radius:999px;background:#1b2331;border:1px solid #33425f;color:#d8e4ff;font-size:12px;font-weight:700}
+.statgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{border:1px solid #313847;border-radius:14px;padding:10px;background:#121722}
+.statbig{font-size:20px;font-weight:800}
+.tablewrap{overflow:auto}
+table{width:100%;border-collapse:collapse;min-width:720px;background:#111722}
+th,td{padding:9px 7px;border-bottom:1px solid #2a3140;text-align:left;font-size:13px}
+th{background:#151b27;color:#d8e4ff}
+.empty{color:#8e98aa}
+.badge{display:inline-block;padding:4px 8px;border-radius:999px;background:#1b2331;border:1px solid #33425f;color:#d8e4ff;font-size:12px;font-weight:700}
 .badge.fire{background:rgba(202,166,77,.18);border-color:#8a6b20;color:#ffd783;box-shadow:0 0 0 1px rgba(202,166,77,.2),0 0 18px rgba(202,166,77,.18)}
-.preview-wrap{display:flex;justify-content:center}#raceCanvas{max-width:100%;height:auto;width:100%;background:#0f131b;border-radius:16px;border:1px solid #313847}
+.preview-wrap{display:flex;justify-content:center}
+#raceCanvas{max-width:100%;height:auto;width:100%;background:#0f131b;border-radius:16px;border:1px solid #313847}
 .footer{color:#8e98aa;font-size:11px;line-height:1.7;padding:2px 2px 18px}
 </style>
 </head>
 <body>
 <div class="wrap">
-<h1>競馬 収集&画像化アプリ v6.5</h1>
-<div class="sub">収集条件は「競馬場 × 距離 × 芝/ダート × 分類 × 信頼度」に統一した版です。クラスは使いません。予想レースCSVは画像化、過去レースCSVは収集専用です。</div>
+<h1>競馬 収集&画像化アプリ v6.6</h1>
+<div class="sub">収集条件は「競馬場 × 距離 × 芝/ダート × 分類 × 信頼度」です。予想レースCSVは画像化、過去レースCSVは収集専用です。</div>
+
 <div class="card"><div class="notice">
-推奨馬の内部判定は母数別しきい値です。<br>
-母数3で複勝率90%以上 / 母数5で80%以上 / 母数10で75%以上 / 母数50で65%以上。<br>
+推奨馬はアプリが <strong>母数と複勝率から自動判定</strong> します。<br>
+判定条件は次のいずれかです。<br>
+・母数50以上 かつ 複勝率50%以上<br>
+・母数30以上 かつ 複勝率60%以上<br>
+・母数10以上 かつ 複勝率75%以上<br>
 収集条件は <strong>競馬場 × 距離 × 芝/ダート × 分類 × 信頼度</strong> です。クラスは使いません。<br>
 予想レース画像では、条件一致した馬を <strong>🔥 推奨</strong> で強調表示します。
 </div></div>
@@ -77,7 +96,7 @@ label{display:block;font-size:12px;color:var(--sub);margin-bottom:5px;font-weigh
 </div>
 
 <script>
-const DB_NAME="keiba_collection_v65",DB_VERSION=1,STORE_HISTORY="historyRows";
+const DB_NAME="keiba_collection_v66",DB_VERSION=1,STORE_HISTORY="historyRows";
 let db=null,historyRows=[],predictionRows=[],raceMap=new Map();
 const $=id=>document.getElementById(id);
 
@@ -92,7 +111,7 @@ function normalizePredictionRow(r){return{raceDate:r.raceDate||"",racecourse:r.r
 function detectPredictionFormat(rows){if(!rows.length)return false;const keys=Object.keys(rows[0]);return["raceDate","racecourse","raceNo","horseName","category","trust"].every(k=>keys.includes(k));}
 function buildRaceKey(r){return[r.raceDate,r.racecourse,r.raceNo,r.raceClass,r.surface,r.distance].join("__");}
 function pct(a,b){if(!b)return"-";return(a/b*100).toFixed(1)+"%";}
-function recommendByCountPlace(count,placeRate){if(count>=50&&placeRate>=0.65)return true;if(count>=10&&placeRate>=0.75)return true;if(count>=5&&placeRate>=0.80)return true;if(count>=3&&placeRate>=0.90)return true;return false;}
+function recommendByCountPlace(count,placeRate){if(count>=50&&placeRate>=0.50)return true;if(count>=30&&placeRate>=0.60)return true;if(count>=10&&placeRate>=0.75)return true;return false;}
 function aggregateHistory(){const map=new Map();for(const r of historyRows){const key=[r.racecourse,r.distance,r.surface,r.category,r.trust].join("|");const cur=map.get(key)||{count:0,win:0,place:0};cur.count+=1;if(r.finishPosition===1)cur.win+=1;if(r.finishPosition>=1&&r.finishPosition<=3)cur.place+=1;map.set(key,cur);}return map;}
 function updateSummary(){$("savedCount").textContent=String(historyRows.length);const comboSet=new Set(historyRows.map(r=>[r.racecourse,r.distance,r.surface,r.category,r.trust].join("|")));$("comboCount").textContent=String(comboSet.size);$("predRaceCount").textContent=String(raceMap.size);$("predHorseCount").textContent=String(predictionRows.length);}
 function populateRaceSelector(){const sel=$("raceSelector"),entries=Array.from(raceMap.entries());sel.innerHTML=entries.length?entries.map(([k,rows])=>{const r=rows[0];return `<option value="${k}">${r.raceDate} ${r.racecourse} ${r.raceNo} ${r.raceClass}</option>`;}).join(""):`<option value="">予想CSVを読み込んでください</option>`;}
