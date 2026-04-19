@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>競馬 収集&画像化アプリ v6.8</title>
+<title>競馬 収集&画像化アプリ v6.9</title>
 <style>
 :root{--bg1:#0d1016;--bg2:#141925;--card:#171a21;--line:#2a2f3a;--text:#f5f7fb;--sub:#aeb7c7;--blue:#2f6fed;--green:#1a9c6b;--orange:#be7a12;--gray:#1f2735;--red:#a63f3f;--gold:#caa64d}
 *{box-sizing:border-box}
@@ -36,17 +36,26 @@ th{background:#151b27;color:#d8e4ff}
 .preview-wrap{display:flex;justify-content:center}
 #raceCanvas{max-width:100%;height:auto;width:100%;background:#0f131b;border-radius:16px;border:1px solid #313847}
 .footer{color:#8e98aa;font-size:11px;line-height:1.7;padding:2px 2px 18px}
+
+.buy-tags{display:flex;gap:6px;flex-wrap:wrap;min-width:280px}
+.buy-tag{display:inline-block;padding:6px 10px;border-radius:10px;border:1px solid #4a546a;background:#182132;color:#dce6ff;font-size:12px;font-weight:700;cursor:pointer;user-select:none}
+.buy-tag.active{background:rgba(202,166,77,.16);border-color:#caa64d;color:#ffd783;box-shadow:0 0 0 1px rgba(202,166,77,.16)}
+.checkwrap{display:flex;align-items:center;justify-content:center}
+.checkwrap input{width:18px;height:18px}
+.pointbox{display:inline-block;min-width:48px;text-align:center;padding:5px 8px;border-radius:10px;background:#1b2331;border:1px solid #33425f;color:#d8e4ff;font-size:12px;font-weight:800}
+.pointbox.checked{background:rgba(26,156,107,.18);border-color:#1a9c6b;color:#a8ffd7}
+
 </style>
 </head>
 <body>
 <div class="wrap">
-<h1>競馬 収集&画像化アプリ v6.8</h1>
-<div class="sub">推奨馬は、分類ありの条件で母数がある馬だけを比較し、そのレース内で1頭だけ自動選出します。</div>
+<h1>競馬 収集&画像化アプリ v6.9</h1>
+<div class="sub">推奨馬は、分類ありの条件で母数がある馬だけを比較し、そのレース内で1頭だけ自動選出します。さらに画像外テーブルで買い目タグ、✔︎、点数を付けられます。</div>
 
 <div class="card"><div class="notice">
 推奨馬の判定条件は <strong>競馬場 × 距離 × 芝/ダート × 分類 × 信頼度</strong> です。クラスは使いません。<br>
 母数 <strong>3以上</strong> の馬だけを候補にし、<strong>母数と複勝率</strong>を合わせた内部スコアで、そのレース内の <strong>1頭だけ</strong> を 🔥推奨 にします。<br>
-同点気味の時は、複勝率が高い方、次に母数が多い方を優先します。
+同点気味の時は、複勝率が高い方、次に母数が多い方を優先します。画像外テーブルでは買い目タグ、✔︎、点数を保存できます。
 </div></div>
 
 <div class="card">
@@ -78,7 +87,7 @@ th{background:#151b27;color:#d8e4ff}
 
 <div class="card">
 <div class="small"><strong>画像外の条件集計</strong></div>
-<div class="tablewrap"><table><thead><tr><th>馬名</th><th>信頼度</th><th>分類</th><th>条件</th><th>母数</th><th>1着数</th><th>3着内数</th><th>単勝率</th><th>複勝率</th><th>推奨</th></tr></thead><tbody id="statsTable"><tr><td colspan="10" class="empty">予想CSVを読み込むと表示されます。</td></tr></tbody></table></div>
+<div class="tablewrap"><table><thead><tr><th>馬名</th><th>信頼度</th><th>分類</th><th>条件</th><th>母数</th><th>1着数</th><th>3着内数</th><th>単勝率</th><th>複勝率</th><th>推奨</th><th>買い目タグ</th><th>✔︎</th><th>点数</th></tr></thead><tbody id="statsTable"><tr><td colspan="13" class="empty">予想CSVを読み込むと表示されます。</td></tr></tbody></table></div>
 </div>
 
 <div class="card"><div class="statgrid">
@@ -94,6 +103,7 @@ th{background:#151b27;color:#d8e4ff}
 <script>
 const DB_NAME="keiba_collection_v68",DB_VERSION=1,STORE_HISTORY="historyRows";
 let db=null,historyRows=[],predictionRows=[],raceMap=new Map();
+const BUY_TAGS=["単勝","複勝","枠連","馬連","ワイド","馬単","3連複","3連単"];
 const $=id=>document.getElementById(id);
 
 function openDB(){return new Promise((resolve,reject)=>{const req=indexedDB.open(DB_NAME,DB_VERSION);req.onupgradeneeded=e=>{const d=e.target.result;if(!d.objectStoreNames.contains(STORE_HISTORY))d.createObjectStore(STORE_HISTORY,{keyPath:"id",autoIncrement:true});};req.onsuccess=e=>{db=e.target.result;resolve(db)};req.onerror=e=>reject(e);});}
@@ -136,14 +146,52 @@ function getRaceAnalysis(rows){
   return {agg,enriched,best};
 }
 
+
+function rowStorageKey(r){ return ["ticket", r.raceDate, r.racecourse, r.raceNo, r.horseName].join("__"); }
+function getTicketState(r){
+  const raw = localStorage.getItem(rowStorageKey(r));
+  if(!raw) return {tags:[], checked:false, points:0};
+  try{
+    const v = JSON.parse(raw);
+    return {tags:Array.isArray(v.tags)?v.tags:[], checked:!!v.checked, points:Number(v.points)||0};
+  }catch(e){
+    return {tags:[], checked:false, points:0};
+  }
+}
+function saveTicketState(r, state){ localStorage.setItem(rowStorageKey(r), JSON.stringify(state)); }
+function tagButtonsHtml(r){
+  const state = getTicketState(r);
+  return '<div class="buy-tags">' + BUY_TAGS.map(tag=>{
+    const active = state.tags.includes(tag) ? ' active' : '';
+    return '<span class="buy-tag'+active+'" data-action="toggle-tag" data-tag="'+tag+'" data-rkey="'+escapeHtml(rowStorageKey(r))+'">'+tag+'</span>';
+  }).join('') + '</div>';
+}
+function checkHtml(r){
+  const state = getTicketState(r);
+  return '<div class="checkwrap"><input type="checkbox" data-action="toggle-check" data-rkey="'+escapeHtml(rowStorageKey(r))+'" '+(state.checked?'checked':'')+'></div>';
+}
+function pointsHtml(r){
+  const state = getTicketState(r);
+  const cls = state.checked ? "pointbox checked" : "pointbox";
+  return '<div><input type="number" min="0" step="1" value="'+state.points+'" data-action="set-points" data-rkey="'+escapeHtml(rowStorageKey(r))+'" style="width:78px;padding:7px 8px;border-radius:10px;border:1px solid #33425f;background:#0f131b;color:#f5f7fb;font-size:12px"></div><div style="margin-top:6px"><span class="'+cls+'">'+state.points+'点</span></div>';
+}
+function findRowByStorageKey(k){
+  for(const rows of raceMap.values()){
+    for(const r of rows){
+      if(rowStorageKey(r)===k) return r;
+    }
+  }
+  return null;
+}
+
 function renderStatsForRace(){
   const key=$("raceSelector").value,rows=raceMap.get(key)||[],tbody=$("statsTable");
-  if(!rows.length){tbody.innerHTML=`<tr><td colspan="10" class="empty">予想CSVを読み込むと表示されます。</td></tr>`;return;}
+  if(!rows.length){tbody.innerHTML=`<tr><td colspan="13" class="empty">予想CSVを読み込むと表示されます。</td></tr>`;return;}
   const analysis=getRaceAnalysis(rows);
   tbody.innerHTML=analysis.enriched.map(r=>{
     const condLabel=`${r.racecourse}×${r.distance}×${r.surface}×${r.category}×${r.trust}`;
     const rec=analysis.best && analysis.best.horseName===r.horseName && analysis.best._condKey===r._condKey;
-    return `<tr><td>${escapeHtml(r.horseName)}</td><td>${escapeHtml(r.trust)}</td><td>${escapeHtml(r.category)}</td><td>${escapeHtml(condLabel)}</td><td>${r._stat.count}</td><td>${r._stat.win}</td><td>${r._stat.place}</td><td>${pct(r._stat.win,r._stat.count)}</td><td>${pct(r._stat.place,r._stat.count)}</td><td>${rec?'<span class="badge fire">🔥 推奨</span>':'-'}</td></tr>`;
+    return `<tr><td>${escapeHtml(r.horseName)}</td><td>${escapeHtml(r.trust)}</td><td>${escapeHtml(r.category)}</td><td>${escapeHtml(condLabel)}</td><td>${r._stat.count}</td><td>${r._stat.win}</td><td>${r._stat.place}</td><td>${pct(r._stat.win,r._stat.count)}</td><td>${pct(r._stat.place,r._stat.count)}</td><td>${rec?'<span class="badge fire">🔥 推奨</span>':'-'}</td><td>${tagButtonsHtml(r)}</td><td>${checkHtml(r)}</td><td>${pointsHtml(r)}</td></tr>`;
   }).join("");
 }
 
@@ -192,6 +240,38 @@ function downloadCanvas(){const c=$("raceCanvas"),a=document.createElement("a");
 function backupHistory(){const blob=new Blob([JSON.stringify(historyRows,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="keiba_history_backup.json";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
 async function clearHistoryData(){if(!confirm("過去データを全部削除します。よろしいですか？"))return;await clearStore();historyRows=[];$("historyLog").textContent="過去データを削除しました。";updateSummary();renderStatsForRace();renderRaceImage();}
 $("importHistory").addEventListener("click",importHistoryCSV);$("loadPrediction").addEventListener("click",loadPredictionCSV);$("renderImage").addEventListener("click",()=>{renderStatsForRace();renderRaceImage();});$("downloadImage").addEventListener("click",downloadCanvas);$("backupHistory").addEventListener("click",backupHistory);$("clearHistory").addEventListener("click",clearHistoryData);$("raceSelector").addEventListener("change",()=>{renderStatsForRace();renderRaceImage();});
+
+document.addEventListener("click", (e)=>{
+  const tagEl = e.target.closest("[data-action='toggle-tag']");
+  if(!tagEl) return;
+  const r = findRowByStorageKey(tagEl.dataset.rkey);
+  if(!r) return;
+  const state = getTicketState(r);
+  const tag = tagEl.dataset.tag;
+  state.tags = state.tags.includes(tag) ? state.tags.filter(v=>v!==tag) : [...state.tags, tag];
+  saveTicketState(r, state);
+  renderStatsForRace();
+});
+document.addEventListener("change", (e)=>{
+  const el = e.target;
+  if(el.matches("[data-action='toggle-check']")){
+    const r = findRowByStorageKey(el.dataset.rkey);
+    if(!r) return;
+    const state = getTicketState(r);
+    state.checked = !!el.checked;
+    saveTicketState(r, state);
+    renderStatsForRace();
+  }
+  if(el.matches("[data-action='set-points']")){
+    const r = findRowByStorageKey(el.dataset.rkey);
+    if(!r) return;
+    const state = getTicketState(r);
+    state.points = Math.max(0, Number(el.value)||0);
+    saveTicketState(r, state);
+    renderStatsForRace();
+  }
+});
+
 openDB().then(async()=>{historyRows=await loadHistoryRows();updateSummary();renderRaceImage();}).catch(err=>{$("historyLog").textContent="IndexedDB初期化失敗: "+(err&&err.message?err.message:err);});
 </script>
 </body>
