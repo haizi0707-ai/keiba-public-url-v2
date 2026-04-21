@@ -1,198 +1,411 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>競馬 収集&画像化アプリ v6.8</title>
-<style>
-:root{--bg1:#0d1016;--bg2:#141925;--card:#171a21;--line:#2a2f3a;--text:#f5f7fb;--sub:#aeb7c7;--blue:#2f6fed;--green:#1a9c6b;--orange:#be7a12;--gray:#1f2735;--red:#a63f3f;--gold:#caa64d}
-*{box-sizing:border-box}
-body{margin:0;padding:14px;color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic","Segoe UI",sans-serif;background:linear-gradient(180deg,var(--bg1),var(--bg2))}
-.wrap{max-width:920px;margin:0 auto}
-h1{font-size:24px;margin:2px 0 6px}
-.sub{font-size:12px;color:var(--sub);line-height:1.7;margin-bottom:12px}
-.card{background:rgba(23,26,33,.96);border:1px solid var(--line);border-radius:16px;padding:13px;margin-bottom:12px;box-shadow:0 10px 28px rgba(0,0,0,.22);overflow:hidden}
-.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.grid{display:grid;grid-template-columns:1fr;gap:10px}
-button{appearance:none;border:none;border-radius:12px;padding:11px 13px;font-size:14px;font-weight:800;color:#fff;background:var(--blue);box-shadow:0 6px 16px rgba(47,111,237,.28);cursor:pointer}
-button.secondary{background:var(--gray);box-shadow:none;border:1px solid #364055}
-button.green{background:var(--green)}
-button.orange{background:var(--orange)}
-button.red{background:var(--red)}
-input,select{width:100%;display:block;border-radius:12px;border:1px solid #343b49;background:#0f131b;color:var(--text);padding:11px 12px;font-size:16px;outline:none}
-label{display:block;font-size:12px;color:var(--sub);margin-bottom:5px;font-weight:700}
-.small{font-size:12px;color:var(--sub)}
-.notice{background:#111722;border:1px solid #313847;padding:10px 12px;border-radius:12px;color:#d7e5ff;font-size:12px;line-height:1.6}
-.statgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.stat{border:1px solid #313847;border-radius:14px;padding:10px;background:#121722}
-.statbig{font-size:20px;font-weight:800}
-.tablewrap{overflow:auto}
-table{width:100%;border-collapse:collapse;min-width:760px;background:#111722}
-th,td{padding:9px 7px;border-bottom:1px solid #2a3140;text-align:left;font-size:13px}
-th{background:#151b27;color:#d8e4ff}
-.empty{color:#8e98aa}
-.badge{display:inline-block;padding:4px 8px;border-radius:999px;background:#1b2331;border:1px solid #33425f;color:#d8e4ff;font-size:12px;font-weight:700}
-.badge.fire{background:rgba(202,166,77,.18);border-color:#8a6b20;color:#ffd783;box-shadow:0 0 0 1px rgba(202,166,77,.2),0 0 18px rgba(202,166,77,.18)}
-.preview-wrap{display:flex;justify-content:center}
-#raceCanvas{max-width:100%;height:auto;width:100%;background:#0f131b;border-radius:16px;border:1px solid #313847}
-.footer{color:#8e98aa;font-size:11px;line-height:1.7;padding:2px 2px 18px}
-</style>
-</head>
-<body>
-<div class="wrap">
-<h1>競馬 収集&画像化アプリ v6.8</h1>
-<div class="sub">推奨馬は、分類ありの条件で母数がある馬だけを比較し、そのレース内で1頭だけ自動選出します。</div>
+import os
+import unicodedata
+from typing import Dict, List, Tuple
 
-<div class="card"><div class="notice">
-推奨馬の判定条件は <strong>競馬場 × 距離 × 芝/ダート × 分類 × 信頼度</strong> です。クラスは使いません。<br>
-母数 <strong>3以上</strong> の馬だけを候補にし、<strong>母数と複勝率</strong>を合わせた内部スコアで、そのレース内の <strong>1頭だけ</strong> を 🔥推奨 にします。<br>
-同点気味の時は、複勝率が高い方、次に母数が多い方を優先します。
-</div></div>
+import numpy as np
+import pandas as pd
+import streamlit as st
 
-<div class="card">
-<div class="small"><strong>過去レースCSV（収集用）</strong></div>
-<div class="row">
-<input id="historyFile" type="file" accept=".csv" />
-<button id="importHistory" class="green">過去レースCSVを取り込む</button>
-<button id="backupHistory" class="secondary">JSONバックアップ</button>
-<button id="clearHistory" class="red">過去データ削除</button>
-</div>
-<div id="historyLog" class="small" style="margin-top:8px">まだ取り込んでいません。</div>
-</div>
+st.set_page_config(page_title='競馬ロジック検証アプリ v1', layout='centered')
 
-<div class="card">
-<div class="small"><strong>予想レースCSV（画像化用）</strong></div>
-<div class="grid">
-<div><label for="predictionFile">CSVファイル</label><input id="predictionFile" type="file" accept=".csv" /></div>
-<div><label for="raceSelector">対象レース</label><select id="raceSelector"><option value="">先にCSVを読み込んでください</option></select></div>
-</div>
-<div class="row" style="margin-top:10px">
-<button id="loadPrediction" class="green">予想CSVを読み込む</button>
-<button id="renderImage" class="orange">画像を作成</button>
-<button id="downloadImage" class="secondary">画像を保存</button>
-</div>
-<div id="predictionLog" class="small" style="margin-top:8px">まだ読み込んでいません。</div>
-</div>
+# ---------- Utility ----------
 
-<div class="card"><div class="small"><strong>画像プレビュー</strong></div><div class="preview-wrap"><canvas id="raceCanvas" width="720" height="1200"></canvas></div></div>
+def read_csv_any(file_obj_or_path):
+    encodings = ['utf-8-sig', 'cp932', 'shift_jis', 'utf-8']
+    last_err = None
+    for enc in encodings:
+        try:
+            if hasattr(file_obj_or_path, 'seek'):
+                file_obj_or_path.seek(0)
+            return pd.read_csv(file_obj_or_path, encoding=enc)
+        except Exception as e:
+            last_err = e
+    raise last_err
 
-<div class="card">
-<div class="small"><strong>画像外の条件集計</strong></div>
-<div class="tablewrap"><table><thead><tr><th>馬名</th><th>信頼度</th><th>分類</th><th>条件</th><th>母数</th><th>1着数</th><th>3着内数</th><th>単勝率</th><th>複勝率</th><th>推奨</th></tr></thead><tbody id="statsTable"><tr><td colspan="10" class="empty">予想CSVを読み込むと表示されます。</td></tr></tbody></table></div>
-</div>
 
-<div class="card"><div class="statgrid">
-<div class="stat"><div class="small">保存済み履歴件数</div><div id="savedCount" class="statbig">0</div></div>
-<div class="stat"><div class="small">保存済み条件数</div><div id="comboCount" class="statbig">0</div></div>
-<div class="stat"><div class="small">予想CSVレース数</div><div id="predRaceCount" class="statbig">0</div></div>
-<div class="stat"><div class="small">予想CSV馬数</div><div id="predHorseCount" class="statbig">0</div></div>
-</div></div>
+def norm_text(v) -> str:
+    if pd.isna(v):
+        return ''
+    s = unicodedata.normalize('NFKC', str(v)).strip()
+    return ' '.join(s.split())
 
-<div class="footer">GitHub Pages / iPhone向け。保存は IndexedDB を使います。CSV全文ではなく必要列だけ保持します。</div>
-</div>
 
-<script>
-const DB_NAME="keiba_collection_v68",DB_VERSION=1,STORE_HISTORY="historyRows";
-let db=null,historyRows=[],predictionRows=[],raceMap=new Map();
-const $=id=>document.getElementById(id);
-
-function openDB(){return new Promise((resolve,reject)=>{const req=indexedDB.open(DB_NAME,DB_VERSION);req.onupgradeneeded=e=>{const d=e.target.result;if(!d.objectStoreNames.contains(STORE_HISTORY))d.createObjectStore(STORE_HISTORY,{keyPath:"id",autoIncrement:true});};req.onsuccess=e=>{db=e.target.result;resolve(db)};req.onerror=e=>reject(e);});}
-function clearStore(){return new Promise((resolve,reject)=>{const tx=db.transaction(STORE_HISTORY,"readwrite");tx.objectStore(STORE_HISTORY).clear();tx.oncomplete=()=>resolve();tx.onerror=e=>reject(e);});}
-function saveHistoryRows(rows){return new Promise((resolve,reject)=>{const tx=db.transaction(STORE_HISTORY,"readwrite"),store=tx.objectStore(STORE_HISTORY);rows.forEach(r=>store.add(r));tx.oncomplete=()=>resolve();tx.onerror=e=>reject(e);});}
-function loadHistoryRows(){return new Promise((resolve,reject)=>{const tx=db.transaction(STORE_HISTORY,"readonly"),req=tx.objectStore(STORE_HISTORY).getAll();req.onsuccess=()=>resolve(req.result||[]);req.onerror=e=>reject(e);});}
-function parseCSV(text){const lines=text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").split("\n").filter(v=>v.length>0);if(!lines.length)return[];const rows=[];for(const line of lines){const out=[];let cur="",inQ=false;for(let i=0;i<line.length;i++){const ch=line[i];if(ch=='"'){if(inQ&&line[i+1]=='"'){cur+='"';i++;}else inQ=!inQ;}else if(ch===","&&!inQ){out.push(cur);cur="";}else cur+=ch;}out.push(cur);rows.push(out);}const headers=rows[0].map(v=>v.trim());return rows.slice(1).map(r=>{const obj={};headers.forEach((h,i)=>obj[h]=(r[i]??"").trim());return obj;});}
-function normalizeNumber(v){const n=Number(String(v??"").replace(/,/g,""));return Number.isFinite(n)?n:0;}
-function normalizeHistoryRow(r){return{raceDate:r.raceDate||r.date||"",racecourse:r.racecourse||r.venue||"",raceNo:String(r.raceNo||r.race_number||""),raceClass:r.raceClass||r.race_name||"",surface:r.surface||"",distance:normalizeNumber(r.distance),horseCount:normalizeNumber(r.horseCount),horseName:r.horseName||r.horse_name||"",category:r.category||"",trust:r.trust||"",finishPosition:normalizeNumber(r.finishPosition),comment:r.comment||""};}
-function normalizePredictionRow(r){return{raceDate:r.raceDate||"",racecourse:r.racecourse||"",raceNo:String(r.raceNo||""),raceClass:r.raceClass||"",surface:r.surface||"",distance:normalizeNumber(r.distance),horseCount:normalizeNumber(r.horseCount),horseName:r.horseName||"",category:r.category||"",trust:r.trust||"",finishPosition:normalizeNumber(r.finishPosition),comment:r.comment||""};}
-function detectPredictionFormat(rows){if(!rows.length)return false;const keys=Object.keys(rows[0]);return["raceDate","racecourse","raceNo","horseName","category","trust"].every(k=>keys.includes(k));}
-function buildRaceKey(r){return[r.raceDate,r.racecourse,r.raceNo,r.raceClass,r.surface,r.distance].join("__");}
-function pct(a,b){if(!b)return"-";return(a/b*100).toFixed(1)+"%";}
-function recScore(count, placeRate){
-  if(count < 3) return -1;
-  return placeRate * Math.log(count + 1);
-}
-function aggregateHistory(){const map=new Map();for(const r of historyRows){const key=[r.racecourse,r.distance,r.surface,r.category,r.trust].join("|");const cur=map.get(key)||{count:0,win:0,place:0};cur.count+=1;if(r.finishPosition===1)cur.win+=1;if(r.finishPosition>=1&&r.finishPosition<=3)cur.place+=1;map.set(key,cur);}return map;}
-function updateSummary(){$("savedCount").textContent=String(historyRows.length);const comboSet=new Set(historyRows.map(r=>[r.racecourse,r.distance,r.surface,r.category,r.trust].join("|")));$("comboCount").textContent=String(comboSet.size);$("predRaceCount").textContent=String(raceMap.size);$("predHorseCount").textContent=String(predictionRows.length);}
-function populateRaceSelector(){const sel=$("raceSelector"),entries=Array.from(raceMap.entries());sel.innerHTML=entries.length?entries.map(([k,rows])=>{const r=rows[0];return `<option value="${k}">${r.raceDate} ${r.racecourse} ${r.raceNo} ${r.raceClass}</option>`;}).join(""):`<option value="">予想CSVを読み込んでください</option>`;}
-function escapeHtml(str){return String(str??"").replace(/[&<>"']/g,s=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[s]));}
-
-function getRaceAnalysis(rows){
-  const agg=aggregateHistory();
-  const enriched=rows.map(r=>{
-    const condKey=[r.racecourse,r.distance,r.surface,r.category,r.trust].join("|");
-    const stat=agg.get(condKey)||{count:0,win:0,place:0};
-    const placeRate=stat.count?stat.place/stat.count:0;
-    const score=recScore(stat.count, placeRate);
-    return {...r,_stat:stat,_placeRate:placeRate,_score:score,_condKey:condKey};
-  });
-  let best=null;
-  enriched.forEach(r=>{
-    if(r._stat.count < 3) return;
-    if(!best) { best=r; return; }
-    if(r._score > best._score) best=r;
-    else if(r._score === best._score && r._placeRate > best._placeRate) best=r;
-    else if(r._score === best._score && r._placeRate === best._placeRate && r._stat.count > best._stat.count) best=r;
-  });
-  return {agg,enriched,best};
-}
-
-function renderStatsForRace(){
-  const key=$("raceSelector").value,rows=raceMap.get(key)||[],tbody=$("statsTable");
-  if(!rows.length){tbody.innerHTML=`<tr><td colspan="10" class="empty">予想CSVを読み込むと表示されます。</td></tr>`;return;}
-  const analysis=getRaceAnalysis(rows);
-  tbody.innerHTML=analysis.enriched.map(r=>{
-    const condLabel=`${r.racecourse}×${r.distance}×${r.surface}×${r.category}×${r.trust}`;
-    const rec=analysis.best && analysis.best.horseName===r.horseName && analysis.best._condKey===r._condKey;
-    return `<tr><td>${escapeHtml(r.horseName)}</td><td>${escapeHtml(r.trust)}</td><td>${escapeHtml(r.category)}</td><td>${escapeHtml(condLabel)}</td><td>${r._stat.count}</td><td>${r._stat.win}</td><td>${r._stat.place}</td><td>${pct(r._stat.win,r._stat.count)}</td><td>${pct(r._stat.place,r._stat.count)}</td><td>${rec?'<span class="badge fire">🔥 推奨</span>':'-'}</td></tr>`;
-  }).join("");
-}
-
-function roundRect(ctx,x,y,w,h,r,fill,stroke){if(w<2*r)r=w/2;if(h<2*r)r=h/2;ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();if(fill)ctx.fill();if(stroke)ctx.stroke();}
-function renderRaceImage(){
-  const key=$("raceSelector").value,rows=(raceMap.get(key)||[]).slice(),c=$("raceCanvas"),ctx=c.getContext("2d");
-  if(!rows.length){
-    ctx.clearRect(0,0,c.width,c.height);ctx.fillStyle="#0f131b";ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle="#d7e5ff";ctx.font="bold 28px sans-serif";ctx.fillText("予想CSVを読み込んでください",40,80);return;
-  }
-  const analysis=getRaceAnalysis(rows);
-  const title=`${rows[0].raceDate} ${rows[0].racecourse} ${rows[0].raceNo}`;
-  const sub=`${rows[0].raceClass} / ${rows[0].surface}${rows[0].distance} / ${rows[0].horseCount}頭`;
-  const rowH=72,topH=150;
-  c.height=topH+24+rows.length*rowH+30;c.width=720;
-  const grad=ctx.createLinearGradient(0,0,0,c.height);grad.addColorStop(0,"#0d1016");grad.addColorStop(1,"#141925");ctx.fillStyle=grad;ctx.fillRect(0,0,c.width,c.height);
-  ctx.fillStyle="#f5f7fb";ctx.font="bold 36px sans-serif";ctx.fillText(title,28,54);
-  ctx.fillStyle="#aeb7c7";ctx.font="22px sans-serif";ctx.fillText(sub,28,92);
-  ctx.fillStyle="#d8e4ff";ctx.font="bold 20px sans-serif";ctx.fillText("ランキング画像",28,126);
-
-  analysis.enriched.forEach((r,idx)=>{
-    const y=topH+idx*rowH;
-    ctx.fillStyle=idx%2===0?"#171a21":"#121722";
-    roundRect(ctx,16,y,c.width-32,rowH-10,16,true,false);
-    const rec=analysis.best && analysis.best.horseName===r.horseName && analysis.best._condKey===r._condKey;
-
-    ctx.fillStyle="#f5f7fb";ctx.font="bold 28px sans-serif";ctx.fillText(r.horseName,34,y+42);
-    const boxX=560,boxY=y+13,boxW=110,boxH=38;
-    ctx.fillStyle=rec?"rgba(202,166,77,0.18)":"#1b2331";
-    ctx.strokeStyle=rec?"#caa64d":"#33425f";
-    ctx.lineWidth=rec?2:1;
-    roundRect(ctx,boxX,boxY,boxW,boxH,14,true,true);
-    ctx.fillStyle=rec?"#ffd783":"#d8e4ff";
-    ctx.font="bold 24px sans-serif";ctx.textAlign="center";ctx.fillText(r.trust||"-",boxX+boxW/2,boxY+27);ctx.textAlign="left";
-
-    if(rec){
-      ctx.fillStyle="#ffd783";ctx.font="bold 22px sans-serif";ctx.fillText("🔥 推奨",34,y+66);
-    }else{
-      ctx.fillStyle="#aeb7c7";ctx.font="18px sans-serif";ctx.fillText(r.category||"",34,y+66);
+def norm_track(v) -> str:
+    s = norm_text(v)
+    replace_map = {
+        '東京競馬場': '東京', '中山競馬場': '中山', '中京競馬場': '中京', '阪神競馬場': '阪神',
+        '京都競馬場': '京都', '新潟競馬場': '新潟', '福島競馬場': '福島', '小倉競馬場': '小倉',
+        '札幌競馬場': '札幌', '函館競馬場': '函館',
     }
-  });
+    return replace_map.get(s, s)
+
+
+def norm_surface(v) -> str:
+    s = norm_text(v)
+    if s.startswith('芝'):
+        return '芝'
+    if s.startswith('ダ') or s.startswith('ダート'):
+        return 'ダ'
+    if s.startswith('障'):
+        return '障'
+    return {'ダート': 'ダ'}.get(s, s)
+
+
+def norm_style(v) -> str:
+    s = norm_text(v)
+    mp = {
+        '逃': '逃げ', '逃げ': '逃げ',
+        '先': '先行', '先行': '先行',
+        '差': '差し', '差し': '差し',
+        '追': '追込', '追込': '追込', '追い込み': '追込',
+    }
+    return mp.get(s, s)
+
+
+def norm_winstyle(v) -> str:
+    s = norm_text(v)
+    mp = {
+        '逃げ切り': '逃げ切り',
+        '先行押し切り': '先行押し切り',
+        '好位差し': '好位差し',
+        '差し': '差し',
+        '追い込み': '追い込み',
+        '追込': '追い込み',
+        'まくり': 'まくり',
+    }
+    return mp.get(s, s)
+
+
+def to_int(v):
+    if pd.isna(v):
+        return np.nan
+    s = ''.join(ch for ch in norm_text(v) if ch.isdigit())
+    return pd.to_numeric(s, errors='coerce')
+
+
+def rename_first_match(df: pd.DataFrame, mapping: Dict[str, List[str]]) -> pd.DataFrame:
+    out = df.copy()
+    cols_norm = {norm_text(c): c for c in out.columns}
+    for target, candidates in mapping.items():
+        if target in out.columns:
+            continue
+        for cand in candidates:
+            actual = cols_norm.get(norm_text(cand))
+            if actual is not None:
+                out = out.rename(columns={actual: target})
+                break
+    return out
+
+
+MASTER_MAP = {
+    '日付': ['日付', '日付S', 'date'],
+    '場所': ['場所', 'track'],
+    '芝ダ': ['芝ダ', '芝・ダ', 'surface'],
+    '距離': ['距離', 'distance'],
+    'R': ['R', 'raceNo', 'レース番号'],
+    'レース名': ['レース名', 'raceName', 'レース'],
+    '馬番': ['馬番', 'horseNo'],
+    '馬名': ['馬名', 'horseName'],
+    '騎手': ['騎手', 'jockey'],
+    '調教師': ['調教師', 'trainer'],
+    '血統': ['血統', '種牡馬', 'sire'],
+    '母父馬': ['母父馬', 'damSire'],
+    '馬場状態': ['馬場状態', 'going', '馬場'],
+    '着順数値': ['着順数値', 'finish_rank', '着順'],
+    'win_flag': ['win_flag'],
+    'place_flag': ['place_flag'],
+    '脚質': ['脚質', 'style', '脚質タグ'],
+    '前走場所': ['前走場所', 'prevTrack', '前開催', '前走競馬場', '前走場所タグ'],
+    '勝ち方': ['勝ち方', '勝ち方タグ', 'winStyle'],
 }
 
-async function importHistoryCSV(){const file=$("historyFile").files[0];if(!file){$("historyLog").textContent="CSVファイルを選んでください。";return;}try{const text=await file.text(),rows=parseCSV(text).map(normalizeHistoryRow).filter(r=>r.horseName&&r.racecourse&&r.raceDate);await clearStore();await saveHistoryRows(rows);historyRows=await loadHistoryRows();$("historyLog").textContent=`過去データ取込完了: ${historyRows.length.toLocaleString()}行`;updateSummary();renderStatsForRace();renderRaceImage();}catch(e){$("historyLog").textContent="取込失敗: "+(e&&e.message?e.message:e);}}
-async function loadPredictionCSV(){const file=$("predictionFile").files[0];if(!file){$("predictionLog").textContent="CSVファイルを選んでください。";return;}try{const text=await file.text(),rows=parseCSV(text);if(!detectPredictionFormat(rows)){$("predictionLog").textContent="FinalCSV形式ではありません。";return;}predictionRows=rows.map(normalizePredictionRow).filter(r=>r.horseName&&r.racecourse&&r.raceNo);raceMap=new Map();for(const r of predictionRows){const key=buildRaceKey(r);if(!raceMap.has(key))raceMap.set(key,[]);raceMap.get(key).push(r);}populateRaceSelector();updateSummary();renderStatsForRace();renderRaceImage();$("predictionLog").textContent=`予想CSV読込完了: ${predictionRows.length.toLocaleString()}頭 / ${raceMap.size.toLocaleString()}レース`;}catch(e){$("predictionLog").textContent="読込失敗: "+(e&&e.message?e.message:e);}}
-function downloadCanvas(){const c=$("raceCanvas"),a=document.createElement("a");a.href=c.toDataURL("image/png");a.download="keiba_race_image.png";a.click();}
-function backupHistory(){const blob=new Blob([JSON.stringify(historyRows,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="keiba_history_backup.json";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
-async function clearHistoryData(){if(!confirm("過去データを全部削除します。よろしいですか？"))return;await clearStore();historyRows=[];$("historyLog").textContent="過去データを削除しました。";updateSummary();renderStatsForRace();renderRaceImage();}
-$("importHistory").addEventListener("click",importHistoryCSV);$("loadPrediction").addEventListener("click",loadPredictionCSV);$("renderImage").addEventListener("click",()=>{renderStatsForRace();renderRaceImage();});$("downloadImage").addEventListener("click",downloadCanvas);$("backupHistory").addEventListener("click",backupHistory);$("clearHistory").addEventListener("click",clearHistoryData);$("raceSelector").addEventListener("change",()=>{renderStatsForRace();renderRaceImage();});
-openDB().then(async()=>{historyRows=await loadHistoryRows();updateSummary();renderRaceImage();}).catch(err=>{$("historyLog").textContent="IndexedDB初期化失敗: "+(err&&err.message?err.message:err);});
-</script>
-</body>
-</html>
+RUNNER_MAP = {
+    '場所': ['場所', 'track'],
+    '芝ダ': ['芝ダ', '芝・ダ', 'surface'],
+    '距離': ['距離', 'distance'],
+    'レース': ['レース', 'raceName', 'レース名'],
+    'raceNo': ['raceNo', 'R', 'レース番号'],
+    '馬番': ['馬番', 'horseNo'],
+    '馬名': ['馬名', 'horseName'],
+    '血統': ['血統', '種牡馬', 'sire'],
+    '調教師': ['調教師', 'trainer'],
+    '脚質': ['脚質', 'style'],
+    '前走場所': ['前走場所', 'prevTrack', '前開催'],
+    '勝ち方': ['勝ち方', 'winStyle'],
+}
+
+RESULT_MAP = {
+    'レース': ['レース', 'raceName', 'レース名'],
+    '馬名': ['馬名', 'horseName'],
+    '着順': ['着順', 'finish_rank', '実着順'],
+}
+
+SPECS = [
+    ('血統', '血統', '血統点', '血統母数'),
+    ('調教師', '調教師', '調教師点', '調教師母数'),
+    ('脚質', '脚質', '脚質点', '脚質母数'),
+    ('前走場所', '前走場所', '前走場所点', '前走場所母数'),
+    ('勝ち方', '勝ち方', '勝ち方点', '勝ち方母数'),
+]
+
+
+def prepare_master(df: pd.DataFrame) -> pd.DataFrame:
+    df = rename_first_match(df, MASTER_MAP)
+    for col in MASTER_MAP:
+        if col not in df.columns:
+            df[col] = ''
+
+    df['場所'] = df['場所'].apply(norm_track)
+    df['芝ダ'] = df['芝ダ'].apply(norm_surface)
+    df['距離'] = pd.to_numeric(df['距離'], errors='coerce')
+    df['馬名'] = df['馬名'].apply(norm_text)
+    df['調教師'] = df['調教師'].apply(norm_text)
+    df['血統'] = df['血統'].apply(norm_text)
+    df['脚質'] = df['脚質'].apply(norm_style)
+    df['前走場所'] = df['前走場所'].apply(norm_track)
+    df['勝ち方'] = df['勝ち方'].apply(norm_winstyle)
+    df['着順数値'] = pd.to_numeric(df['着順数値'], errors='coerce')
+
+    if 'win_flag' not in df.columns or df['win_flag'].astype(str).eq('').all():
+        df['win_flag'] = (df['着順数値'] == 1).astype(int)
+    else:
+        df['win_flag'] = pd.to_numeric(df['win_flag'], errors='coerce').fillna(0).astype(int)
+
+    if 'place_flag' not in df.columns or df['place_flag'].astype(str).eq('').all():
+        df['place_flag'] = df['着順数値'].between(1, 3, inclusive='both').fillna(False).astype(int)
+    else:
+        df['place_flag'] = pd.to_numeric(df['place_flag'], errors='coerce').fillna(0).astype(int)
+
+    return df
+
+
+def prepare_runners(df: pd.DataFrame) -> pd.DataFrame:
+    df = rename_first_match(df, RUNNER_MAP)
+    for col in RUNNER_MAP:
+        if col not in df.columns:
+            df[col] = ''
+
+    df['場所'] = df['場所'].apply(norm_track)
+    df['芝ダ'] = df['芝ダ'].apply(norm_surface)
+    # Allow old format distance like 芝1200 only if 芝ダ/距離 missing
+    if 'distance' in df.columns:
+        old_dist = df['distance'].apply(norm_text)
+        fill_surface = old_dist.apply(norm_surface)
+        fill_dist = old_dist.apply(to_int)
+        df['芝ダ'] = np.where(df['芝ダ'].astype(str).str.strip() != '', df['芝ダ'], fill_surface)
+        df['距離'] = np.where(pd.to_numeric(df['距離'], errors='coerce').notna(), pd.to_numeric(df['距離'], errors='coerce'), fill_dist)
+    else:
+        df['距離'] = pd.to_numeric(df['距離'], errors='coerce')
+    df['距離'] = pd.to_numeric(df['距離'], errors='coerce')
+
+    for col in ['レース', '馬名', '血統', '調教師']:
+        df[col] = df[col].apply(norm_text)
+    df['脚質'] = df['脚質'].apply(norm_style)
+    df['前走場所'] = df['前走場所'].apply(norm_track)
+    df['勝ち方'] = df['勝ち方'].apply(norm_winstyle)
+    return df
+
+
+def prepare_results(df: pd.DataFrame) -> pd.DataFrame:
+    df = rename_first_match(df, RESULT_MAP)
+    for col in RESULT_MAP:
+        if col not in df.columns:
+            df[col] = ''
+    df['レース'] = df['レース'].apply(norm_text)
+    df['馬名'] = df['馬名'].apply(norm_text)
+    df['着順'] = pd.to_numeric(df['着順'], errors='coerce')
+    return df[['レース', '馬名', '着順']].copy()
+
+
+@st.cache_data(show_spinner=False)
+def build_stats(master_df: pd.DataFrame, attr_col: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    base_cols = ['場所', '芝ダ', '距離']
+    attr = attr_col
+    use = master_df[base_cols + [attr, 'win_flag', 'place_flag']].copy()
+    use[attr] = use[attr].apply(norm_text)
+    if attr in ['前走場所']:
+        use[attr] = use[attr].apply(norm_track)
+    if attr in ['脚質']:
+        use[attr] = use[attr].apply(norm_style)
+    if attr in ['勝ち方']:
+        use[attr] = use[attr].apply(norm_winstyle)
+
+    detailed = (
+        use[use[attr] != '']
+        .groupby(base_cols + [attr], dropna=False)
+        .agg(母数=('place_flag', 'size'), 勝利数=('win_flag', 'sum'), 複勝数=('place_flag', 'sum'))
+        .reset_index()
+    )
+    detailed['単勝率'] = detailed['勝利数'] / detailed['母数']
+    detailed['複勝率'] = detailed['複勝数'] / detailed['母数']
+    detailed['補正複勝率'] = (detailed['複勝数'] + 1) / (detailed['母数'] + 3)
+
+    fallback = (
+        use.groupby(base_cols, dropna=False)
+        .agg(条件母数=('place_flag', 'size'), 条件勝利数=('win_flag', 'sum'), 条件複勝数=('place_flag', 'sum'))
+        .reset_index()
+    )
+    fallback['条件平均複勝率'] = fallback['条件複勝数'] / fallback['条件母数']
+    fallback['条件補正複勝率'] = (fallback['条件複勝数'] + 1) / (fallback['条件母数'] + 3)
+    return detailed, fallback
+
+
+def score_runners(runners: pd.DataFrame, master_df: pd.DataFrame, weights: Dict[str, int]) -> pd.DataFrame:
+    out = runners.copy()
+    contribution_cols = []
+
+    for attr, key_col, score_col, count_col in SPECS:
+        detail, fallback = build_stats(master_df, key_col)
+        detail = detail.rename(columns={key_col: f'{key_col}_key'})
+        fallback_cols = ['場所', '芝ダ', '距離', '条件補正複勝率', '条件母数']
+        merged = out.merge(
+            detail[['場所', '芝ダ', '距離', f'{key_col}_key', '補正複勝率', '母数']],
+            left_on=['場所', '芝ダ', '距離', key_col],
+            right_on=['場所', '芝ダ', '距離', f'{key_col}_key'],
+            how='left'
+        ).merge(
+            fallback[fallback_cols],
+            on=['場所', '芝ダ', '距離'],
+            how='left'
+        )
+        rate = merged['補正複勝率'].where(merged['補正複勝率'].notna(), merged['条件補正複勝率'])
+        mothers = merged['母数'].where(merged['母数'].notna(), merged['条件母数'])
+        out[count_col] = mothers.fillna(0).astype(float).round(0).astype(int)
+        out[score_col] = (rate.fillna(0) * weights[attr]).round(2)
+        contribution_cols.append(score_col)
+
+    out['総合点'] = out[contribution_cols].sum(axis=1).round(2)
+    out['最大加点項目'] = out[contribution_cols].idxmax(axis=1).str.replace('点', '', regex=False)
+    out['最大加点値'] = out[contribution_cols].max(axis=1).round(2)
+    out['最小加点項目'] = out[contribution_cols].idxmin(axis=1).str.replace('点', '', regex=False)
+    out['最小加点値'] = out[contribution_cols].min(axis=1).round(2)
+
+    race_keys = ['場所', '芝ダ', '距離']
+    if 'レース' in out.columns and out['レース'].astype(str).str.strip().ne('').any():
+        race_keys = ['場所', '芝ダ', '距離', 'レース']
+    out['順位'] = out.groupby(race_keys)['総合点'].rank(method='min', ascending=False).astype(int)
+    return out
+
+
+def add_results(scored: pd.DataFrame, results: pd.DataFrame) -> pd.DataFrame:
+    if results is None or results.empty:
+        return scored
+    out = scored.copy()
+    merge_keys = ['馬名']
+    if 'レース' in out.columns and out['レース'].astype(str).str.strip().ne('').any() and results['レース'].astype(str).str.strip().ne('').any():
+        merge_keys = ['レース', '馬名']
+    out = out.merge(results, on=merge_keys, how='left')
+    out['複勝圏'] = np.where(out['着順'].between(1, 3, inclusive='both'), '○', '')
+    out['1着'] = np.where(out['着順'] == 1, '○', '')
+    return out
+
+
+def summary_by_race(df: pd.DataFrame) -> pd.DataFrame:
+    group_cols = ['場所', '芝ダ', '距離']
+    if 'レース' in df.columns and df['レース'].astype(str).str.strip().ne('').any():
+        group_cols.append('レース')
+    agg = df.groupby(group_cols, dropna=False).agg(
+        頭数=('馬名', 'size'),
+        予想1位複勝=('複勝圏', lambda s: int((s == '○').sum()) if len(s) else 0),
+        予想1位勝利=('1着', lambda s: int((s == '○').sum()) if len(s) else 0),
+    ).reset_index()
+    return agg
+
+
+# ---------- UI ----------
+st.title('競馬ロジック検証アプリ v1')
+st.caption('3年分元データから全頭診断・項目寄与確認・結果照合を行う検証専用版')
+
+with st.expander('使い方', expanded=False):
+    st.markdown(
+        '- 元データCSVを読み込みます。\n'
+        '- 出走馬CSVを読み込みます。\n'
+        '- 重みを調整すると総合点が即時再計算されます。\n'
+        '- 結果CSVを入れると着順照合ができます。'
+    )
+
+col1, col2 = st.columns(2)
+with col1:
+    master_file = st.file_uploader('① 元データCSV（3年分）', type=['csv'], key='master')
+    runners_file = st.file_uploader('② 出走馬CSV', type=['csv'], key='runners')
+with col2:
+    results_file = st.file_uploader('③ 結果CSV（任意）', type=['csv'], key='results')
+    st.markdown('**重み設定（合計100推奨）**')
+    weights = {
+        '血統': st.slider('血統', 0, 100, 20, 1),
+        '調教師': st.slider('調教師', 0, 100, 20, 1),
+        '脚質': st.slider('脚質', 0, 100, 20, 1),
+        '前走場所': st.slider('前走場所', 0, 100, 20, 1),
+        '勝ち方': st.slider('勝ち方', 0, 100, 20, 1),
+    }
+    st.caption(f"現在の合計: {sum(weights.values())}")
+
+if not master_file or not runners_file:
+    st.info('元データCSVと出走馬CSVをアップロードしてください。')
+    st.stop()
+
+try:
+    master_raw = read_csv_any(master_file)
+    runners_raw = read_csv_any(runners_file)
+    results_raw = read_csv_any(results_file) if results_file else None
+except Exception as e:
+    st.error(f'CSVの読み込みに失敗しました: {e}')
+    st.stop()
+
+master_df = prepare_master(master_raw)
+runners_df = prepare_runners(runners_raw)
+results_df = prepare_results(results_raw) if results_raw is not None else None
+
+with st.expander('読み込み確認', expanded=False):
+    st.write('元データ件数:', len(master_df))
+    st.write('出走馬件数:', len(runners_df))
+    if results_df is not None:
+        st.write('結果件数:', len(results_df))
+    st.write('元データ列:', list(master_raw.columns))
+    st.write('出走馬列:', list(runners_raw.columns))
+
+scored = score_runners(runners_df, master_df, weights)
+scored = add_results(scored, results_df)
+
+# Tabs
+main_tab, effect_tab, result_tab, export_tab = st.tabs(['全頭診断', '効いた項目', '結果照合', 'CSV出力'])
+
+with main_tab:
+    show_cols = [
+        c for c in ['順位', 'レース', '馬番', '馬名', '血統点', '調教師点', '脚質点', '前走場所点', '勝ち方点',
+                    '総合点', '血統母数', '調教師母数', '脚質母数', '前走場所母数', '勝ち方母数'] if c in scored.columns
+    ]
+    display_df = scored.sort_values(['順位', '総合点'], ascending=[True, False])[show_cols]
+    st.dataframe(display_df, use_container_width=True, height=700)
+
+with effect_tab:
+    effect_cols = [c for c in ['順位', 'レース', '馬名', '最大加点項目', '最大加点値', '最小加点項目', '最小加点値',
+                               '血統点', '調教師点', '脚質点', '前走場所点', '勝ち方点', '総合点'] if c in scored.columns]
+    st.dataframe(scored.sort_values(['順位', '総合点'], ascending=[True, False])[effect_cols], use_container_width=True, height=700)
+    avg_cols = ['血統点', '調教師点', '脚質点', '前走場所点', '勝ち方点', '総合点']
+    st.subheader('レース全体の平均点')
+    st.dataframe(scored[avg_cols].mean().round(2).rename('平均').to_frame().T, use_container_width=True)
+
+with result_tab:
+    if results_df is None or results_df.empty:
+        st.info('結果CSVを入れると実着順との照合が表示されます。')
+    else:
+        result_cols = [c for c in ['順位', 'レース', '馬名', '総合点', '着順', '複勝圏', '1着', '最大加点項目', '最大加点値'] if c in scored.columns]
+        st.dataframe(scored.sort_values(['順位', '着順'], ascending=[True, True])[result_cols], use_container_width=True, height=700)
+        top1 = scored[scored['順位'] == 1].copy()
+        if not top1.empty:
+            top1_summary = {
+                '予想1位頭数': len(top1),
+                '予想1位の勝利数': int((top1['着順'] == 1).sum()),
+                '予想1位の複勝数': int(top1['着順'].between(1, 3, inclusive='both').sum()),
+                '予想1位単勝率': round((top1['着順'] == 1).mean(), 4) if len(top1) else 0,
+                '予想1位複勝率': round(top1['着順'].between(1, 3, inclusive='both').mean(), 4) if len(top1) else 0,
+            }
+            st.subheader('予想1位の成績')
+            st.json(top1_summary)
+
+with export_tab:
+    export_df = scored.copy()
+    st.dataframe(export_df, use_container_width=True, height=500)
+    csv_bytes = export_df.to_csv(index=False, encoding='utf-8-sig').encode('utf-8-sig')
+    st.download_button('診断結果CSVをダウンロード', data=csv_bytes, file_name='validation_scored_output.csv', mime='text/csv')
